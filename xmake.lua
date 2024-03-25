@@ -1,0 +1,7 @@
+add_rules("mode.debug", "mode.release")
+add_requires("glad", "glfw")
+target("robolab")
+    set_kind("binary")
+    add_files("src/*.cpp")
+    add_includedirs("include")
+    add_packages("glad", "glfw")
