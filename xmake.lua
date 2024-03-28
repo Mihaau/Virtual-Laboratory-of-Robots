@@ -1,6 +1,8 @@
 add_rules("mode.debug", "mode.release")
 add_requires("glad", "glfw")
 target("robolab")
+    set_policy("run.autobuild", true)
+    set_policy("stopAtEntry", false)
     set_kind("binary")
     add_files("src/*.cpp")
     add_includedirs("include")
