@@ -4,22 +4,6 @@
 #include "shader.h"
 #include "window.h"
 
-// Vertex shader source code
-const char *vertexShaderSource = "#version 330 core\n"
-                                 "layout (location = 0) in vec3 aPos;\n"
-                                 "void main()\n"
-                                 "{\n"
-                                 "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-                                 "}\0";
-
-// Fragment shader source code
-const char *fragmentShaderSource = "#version 330 core\n"
-                                   "out vec4 FragColor;\n"
-                                   "void main()\n"
-                                   "{\n"
-                                   "   FragColor = vec4(0.8f, 0.2f, 0.2f, 1.0f);\n"
-                                   "}\0";
-
 int main()
 {
     GLFWwindow *window = nullptr;
@@ -29,20 +13,15 @@ int main()
     // Load GLAD
     gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
-    unsigned int vertexShader;
-    createVertexShader(vertexShaderSource, &vertexShader);
-
-    unsigned int fragmentShader;
-    createFragmentShader(fragmentShaderSource, &fragmentShader);
-
-    unsigned int shaderProgram;
-    createShaderProgram(vertexShader, fragmentShader, &shaderProgram);
+    Shader shader("../../../../src/shader/vertex_shader.glsl", "../../../../src/shader/fragment_shader.glsl");
 
     // Create a vertex array object (x, y, z)
     float vertices[] = {
-        -0.5f, -0.5f, 0.0f,
-        0.5f, -0.5f, 0.0f,
-        0.0f, 0.5f, 0.0f};
+        // positions         // colors
+        0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,  // bottom right
+        -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, // bottom left
+        0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f    // top
+    };
 
     // Create a vertex buffer object
     unsigned int VBO, VAO;
@@ -56,26 +35,27 @@ int main()
     // Copy the vertices data to the VBO
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
     // Set the vertex attributes pointers
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
 
     // Unbind the VBO and VAO
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-    //wireframe mode
-    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    // wireframe mode
+    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     while (!glfwWindowShouldClose(window))
     {
-
         glClearColor(0.2f, 0.8f, 0.8f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glUseProgram(shaderProgram);
+        shader.use();
+
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 3);
-
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -84,7 +64,7 @@ int main()
     // Delete the VAO and VBO and the shader program
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
-    glDeleteProgram(shaderProgram);
+    shader.deleteProgram();
 
     glfwTerminate();
     return 0;
