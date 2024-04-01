@@ -13,7 +13,7 @@ int main()
     // Load GLAD
     gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
-    Shader shader("../../../../src/shader/vertex_shader.glsl", "../../../../src/shader/fragment_shader.glsl");
+    Shader shader("assets/shaders/vertex_shader.vert", "assets/shaders/fragment_shader.frag");
 
     // Create a vertex array object (x, y, z)
     float vertices[] = {
