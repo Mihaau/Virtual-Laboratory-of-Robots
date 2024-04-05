@@ -1,7 +1,3 @@
-#include <glad/glad.h>
-#include <iostream>
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
 #include <texture.h>
 
 Texture::Texture(const char *path) : ID(0)
@@ -24,8 +20,7 @@ Texture::Texture(const char *path) : ID(0)
     }
     else
     {
-        std::cout << "Failed to load texture"
-                  << "\n";
+        std::cout << "Failed to load texture \n";
     }
     stbi_image_free(data);
     glBindTexture(GL_TEXTURE_2D, 0);

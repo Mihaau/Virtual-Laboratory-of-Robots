@@ -1,9 +1,13 @@
 #pragma once
 
+#include <glad/glad.h>
+#include <iostream>
+#include <stb_image.h>
+
 class Texture
 {
 public:
-    unsigned int ID;
+    GLuint ID;
     Texture(const char *path);
     ~Texture();
     void bind(int slot = 0);
