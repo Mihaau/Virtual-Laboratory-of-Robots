@@ -55,6 +55,6 @@ After that, the `robolab` executable will be placed in the directory
 
 ## Acknowledgements
 
-Ogma has been created by Anna Ivantyska and Michał Pryba.
+The project has been created by Anna Ivanytska and Michał Pryba.
 
 ## License
