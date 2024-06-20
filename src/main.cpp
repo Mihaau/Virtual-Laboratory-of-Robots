@@ -1,5 +1,9 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+#include "imgui_internal.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include <iostream>
 #include "shader.h"
@@ -8,12 +12,17 @@
 #include "EBO.h"
 #include "VAO.h"
 #include "VBO.h"
+#include "application.h"
+
 
 int main()
 {
     GLFWwindow *window = nullptr;
     createWindow(&window, 800, 600, "Virtual Laboratory of Robots");
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    
+    UseImGui MyGui;
+    MyGui.Init(&window);
 
     // Load GLAD
     gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
@@ -56,10 +65,11 @@ int main()
     // wireframe mode
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
+
     while (!glfwWindowShouldClose(window))
     {
-        glClearColor(0.2f, 0.8f, 0.8f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        // glClearColor(0.2f, 0.8f, 0.8f, 1.0f);
+        // glClear(GL_COLOR_BUFFER_BIT);
 
         texture.bind();
         texture2.bind(1);
@@ -70,10 +80,22 @@ int main()
         vao.Bind();
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-        glfwSwapBuffers(window);
+        //glfwSwapBuffers(window);
+        
+        glClearColor(0.2f, 0.8f, 0.8f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        // Poll and handle events (inputs, window resize, etc.)
         glfwPollEvents();
+
+        MyGui.NewFrame();
+        MyGui.Update();
+        MyGui.Render();
+
+        glfwSwapBuffers(window);
     }
 
+    MyGui.Shutdown();
     // Delete the VAO, VBO, EBO and the shader program
     vao.Delete();
     vbo.Delete();

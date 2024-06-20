@@ -1,4 +1,5 @@
 #include "window.h"
+#include "application.h"
 
 void createWindow(GLFWwindow **window, int width, int height, const char *title)
 {
@@ -14,6 +15,7 @@ void createWindow(GLFWwindow **window, int width, int height, const char *title)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    
 
     // For MacOS
 #ifdef __APPLE__
@@ -28,6 +30,8 @@ void createWindow(GLFWwindow **window, int width, int height, const char *title)
         exit(EXIT_FAILURE);
     }
     glfwMakeContextCurrent(*window);
+    glfwSwapInterval(1); // Enable vsync
+
 }
 
 // Callback function for resizing the window
