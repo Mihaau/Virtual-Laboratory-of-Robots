@@ -1,8 +1,19 @@
-# Virtual Laboratory of Robots
+<div align="center">
+  <p>
+    <a align="center" href="" target="https://github.com/Mihaau/Virtual-Laboratory-of-Robots">
+      <img
+        width="100%"
+        src="/docs/assets/banner.png"
+      >
+    </a>
+  </p>
+</div>
+
+## 👋 Hello
 
 Virtual laboratory for industrial robots, featuring 3D models of robots available in an industrial robotics workshop. The virtual robot lab allows users to control the movement of simulated robots, manipulate objects in the virtual environment (such as picking up and releasing blocks), and includes a robot program editor for defining basic robot operations
 
-## Features
+## 🔥 Features
 
 - Real-Time Feedback: Visual and numerical feedback is provided in real-time to help users understand the robot's movements and positions.
 
@@ -13,7 +24,7 @@ to define basic robot operations.
 
 - Pick and Place Operations: Users can simulate picking up, moving, and releasing objects within the virtual environment.
 
-## Table of Contents
+## 📚 Table of Contents
 
 - [Installation](#installation)
   - [Pre-requisites](#pre-requisites)
@@ -22,7 +33,7 @@ to define basic robot operations.
 - [Acknowledgements](#acknowledgements)
 - [License](#license)
 
-## Installation
+## 💻 Installation
 
 ### Pre-requisites
 
@@ -53,8 +64,14 @@ After that, the `robolab` executable will be placed in the directory
 
 ### Debugging
 
-## Acknowledgements
+## 🏆 Acknowledgements
 
-The project has been created by Anna Ivanytska and Michał Pryba.
+Virtual Laboratory of Robots has been created by Anna Ivantyska and Michał Pryba.
+
+<p align="center">
+    <a href="https://github.com/Mihaau/Virtual-Laboratory-of-Robots/graphs/contributors">
+      <img src="https://contrib.rocks/image?repo=Mihaau/Virtual-Laboratory-of-Robots" />
+    </a>
+</p>
 
 ## License
