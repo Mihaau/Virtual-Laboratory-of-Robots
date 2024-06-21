@@ -66,7 +66,7 @@ After that, the `robolab` executable will be placed in the directory
 
 ## 🏆 Acknowledgements
 
-Virtual Laboratory of Robots has been created by Anna Ivantyska and Michał Pryba.
+Virtual Laboratory of Robots has been created by Anna Ivanytska and Michał Pryba.
 
 <p align="center">
     <a href="https://github.com/Mihaau/Virtual-Laboratory-of-Robots/graphs/contributors">
