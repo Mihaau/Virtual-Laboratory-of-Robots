@@ -1,18 +1,21 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #define STB_IMAGE_IMPLEMENTATION
 #include <iostream>
 #include "shader.h"
 #include "window.h"
 #include "texture.h"
-#include "EBO.h"
 #include "VAO.h"
 #include "VBO.h"
+#include "EBO.h"
 
 int main()
 {
     GLFWwindow *window = nullptr;
-    createWindow(&window, 800, 600, "Virtual Laboratory of Robots");
+    createWindow(&window, 1280 , 720, "Virtual Laboratory of Robots");
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     // Load GLAD
@@ -25,10 +28,10 @@ int main()
     // Create a vertex array object (x, y, z)
     GLfloat vertices[] = {
         // positions          // colors           // texture coords
-        1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f,   // top right
-        1.0f, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,  // bottom right
-        -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom left
-        -1.0f, 1.f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f    // top left
+        0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f,   // top right
+        0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,  // bottom right
+        -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom left
+        -0.5f, 0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f   // top left
     };
     GLuint indices[] = {
         0, 1, 3, // first triangle
@@ -44,7 +47,7 @@ int main()
     EBO ebo(indices, sizeof(indices));
 
     // Link VBO and EBO to VAO
-    vao.LinkAttrib(vbo, 0, 3, GL_FLOAT, 8 * sizeof(float), (void *)0);
+    vao.LinkAttrib(vbo, 0, 3, GL_FLOAT, 8 * sizeof(float), (void *)nullptr);
     vao.LinkAttrib(vbo, 1, 3, GL_FLOAT, 8 * sizeof(float), (void *)(3 * sizeof(float)));
     vao.LinkAttrib(vbo, 2, 2, GL_FLOAT, 8 * sizeof(float), (void *)(6 * sizeof(float)));
 
@@ -67,8 +70,16 @@ int main()
         shader.setInt("texture", 0);
         shader.setInt("texture2", 1);
 
+        // Create transformations
+        auto trans = glm::mat4(1.0f);
+        trans = glm::translate(trans, glm::vec3(0.0f, 0.0f, 0.0f));
+        trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
+
+        unsigned int transformLoc = glGetUniformLocation(shader.ID, "transform");
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
+
         vao.Bind();
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
