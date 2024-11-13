@@ -6,6 +6,7 @@ RobotArm::RobotArm(const char* modelPath, Shader shader) : shader(shader) {
     meshRotations = new ArmRotation[model.meshCount];
     scale = 0.1f;
     color = RED;
+    showPivotPoints = true;
     
     for (int i = 0; i < model.meshCount; i++) {
         meshVisibility[i] = true;
@@ -14,10 +15,18 @@ RobotArm::RobotArm(const char* modelPath, Shader shader) : shader(shader) {
     
     // Ustaw osie obrotu dla poszczególnych części
     meshRotations[0].axis = {0.0f, 1.0f, 0.0f}; // Baza
-    meshRotations[1].axis = {0.0f, 0.0f, 1.0f}; // Ramię 1
+    meshRotations[1].axis = {0.0f, 1.0f, 0.0f}; // Ramię 1
     meshRotations[2].axis = {0.0f, 0.0f, 1.0f}; // Ramię 2
     meshRotations[3].axis = {0.0f, 0.0f, 1.0f}; // Chwytak
+    meshRotations[4].axis = {1.0f, 0.0f, 0.0f}; // Obrót chwytaka
+    meshRotations[5].axis = {0.0f, 1.0f, 0.0f}; // Obrót chwytaka
 
+    pivotPoints = new Vector3[model.meshCount];
+    
+    pivotPoints[0] = {0.0f, 0.0f, 0.0f};     // Baza
+    pivotPoints[1] = {0.0f, 2.0f, 0.0f};     // Punkt obrotu ramienia 1
+    pivotPoints[2] = {0.0f, 5.0f, 0.0f};     // Punkt obrotu ramienia 2
+    pivotPoints[3] = {0.0f, 8.0f, 0.0f};     // Punkt obrotu chwytaka
     // Pobierz lokalizację koloru w shaderze
     colorLoc = GetShaderLocation(shader, "materialColor");
 
@@ -29,15 +38,43 @@ RobotArm::~RobotArm() {
     UnloadModel(model);
     delete[] meshVisibility;
     delete[] meshRotations;
+    delete[] pivotPoints;
     UnloadMaterial(defaultMaterial);
 }
 
-Matrix GetHierarchicalTransform(int meshIndex, ArmRotation* rotations) {
+Matrix GetHierarchicalTransform(int meshIndex, ArmRotation* rotations, Vector3* pivotPoints) {
     Matrix transform = MatrixIdentity();
+    
+    // Apply transformations from root to current mesh
     for (int i = 0; i <= meshIndex; i++) {
-        transform = MatrixMultiply(transform, 
-            MatrixRotate(rotations[i].axis, rotations[i].angle * DEG2RAD));
+        // Move to pivot point
+        Matrix translateToPivot = MatrixTranslate(
+            pivotPoints[i].x,
+            pivotPoints[i].y, 
+            pivotPoints[i].z
+        );
+        
+        // Rotate around pivot
+        Matrix rotation = MatrixRotate(
+            rotations[i].axis,
+            rotations[i].angle * DEG2RAD
+        );
+        
+        // Move back from pivot
+        Matrix translateBack = MatrixTranslate(
+            -pivotPoints[i].x,
+            -pivotPoints[i].y,
+            -pivotPoints[i].z
+        );
+        
+        // Combine local transformations
+        Matrix localTransform = MatrixMultiply(translateToPivot,
+            MatrixMultiply(rotation, translateBack));
+            
+        // Multiply with accumulated transform
+        transform = MatrixMultiply(transform, localTransform);
     }
+    
     return transform;
 }
 
@@ -45,15 +82,44 @@ void RobotArm::Draw() {
     BeginShaderMode(shader);
     float colorVec[4] = {color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f};
     SetShaderValue(shader, colorLoc, colorVec, SHADER_UNIFORM_VEC4);
+    
     for (int i = 0; i < model.meshCount; i++) {
         if (meshVisibility[i]) {
-            Matrix hierarchicalRotation = GetHierarchicalTransform(i, meshRotations);
+            // Get hierarchical transformation including pivots
+            Matrix hierarchicalTransform = GetHierarchicalTransform(i, meshRotations, pivotPoints);
+            
+            // Apply scale
             Matrix scaleMatrix = MatrixScale(scale, scale, scale);
-            Matrix transform = MatrixMultiply(hierarchicalRotation, scaleMatrix);
-            DrawMesh(model.meshes[i], defaultMaterial, transform);
+            Matrix finalTransform = MatrixMultiply(hierarchicalTransform, scaleMatrix);
+            
+            DrawMesh(model.meshes[i], defaultMaterial, finalTransform);
         }
     }
     EndShaderMode();
+}
+
+void RobotArm::DrawPivotPoints(bool show) {
+    if (!show) return;
+    
+    for (int i = 0; i < model.meshCount; i++) {
+        // Get hierarchical transform up to parent
+        Matrix parentTransform = (i == 0) ? 
+            MatrixIdentity() : 
+            GetHierarchicalTransform(i - 1, meshRotations, pivotPoints);
+            
+        // Transform pivot point by parent transforms
+        Vector3 globalPivotPos = Vector3Transform(pivotPoints[i], parentTransform);
+        
+        // Visualize pivot point
+        DrawSphere(globalPivotPos, 0.1f, YELLOW);
+        DrawSphereWires(globalPivotPos, 0.5f, 8, 8, BLACK);
+    }
+}
+
+void RobotArm::SetPivotPoint(int index, Vector3 position) {
+    if (index < model.meshCount) {
+        pivotPoints[index] = position;
+    }
 }
 
 void RobotArm::UpdateRotation(int meshIndex, float angle) {
@@ -84,6 +150,32 @@ void RobotArm::DrawImGuiControls() {
                 char label[32];
                 sprintf(label, "Joint %d", i);
                 ImGui::SliderFloat(label, &meshRotations[i].angle, -180.0f, 180.0f);
+            }
+            ImGui::TreePop();
+        }
+
+        if (ImGui::TreeNode("Pivot Points")) {
+            ImGui::Checkbox("Show Pivot Points", &showPivotPoints);
+            
+            for (int i = 0; i < model.meshCount; i++) {
+                char label[32];
+                sprintf(label, "Pivot %d", i);
+                if (ImGui::TreeNode(label)) {
+                    ImGui::PushItemWidth(100);
+                    
+                    float pos[3] = {
+                        pivotPoints[i].x,
+                        pivotPoints[i].y,
+                        pivotPoints[i].z
+                    };
+                    
+                    if (ImGui::DragFloat3("Position", pos, 0.1f)) {
+                        pivotPoints[i] = {pos[0], pos[1], pos[2]};
+                    }
+                    
+                    ImGui::PopItemWidth();
+                    ImGui::TreePop();
+                }
             }
             ImGui::TreePop();
         }

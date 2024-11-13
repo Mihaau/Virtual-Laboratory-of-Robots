@@ -104,6 +104,7 @@ int main()
 
         DrawGrid(10, 1.0f);
         DrawSphereWires(light.position, 0.5f, 8, 8, YELLOW);
+        robotArm.DrawPivotPoints();
         EndMode3D();
 
         // Interfejs ImGui
