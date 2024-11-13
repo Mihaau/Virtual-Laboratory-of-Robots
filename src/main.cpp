@@ -2,6 +2,9 @@
 #include "raylib.h"
 #include "raymath.h"
 #include "rlImGui.h"
+#include <string>
+#include <vector>
+#include "robotArm.h"
 
 #define RLIGHTS_IMPLEMENTATION
 #include "rlights.h"
@@ -46,33 +49,14 @@ int main()
     camera.fovy = cameraFOV;
     camera.projection = CAMERA_PERSPECTIVE;
 
-    // Ładowanie modelu
-    const char *modelPath = "assets/robot.glb";
-    Model model = LoadModel(modelPath);
-    if (model.meshCount == 0)
-    {
-        TraceLog(LOG_ERROR, "Failed to load model");
-        return false;
-    }
+    // Inicjalizacja ramienia robota
+    RobotArm robotArm("assets/robot.glb", shader);
+    robotArm.SetScale(0.1f);
 
-    for (int i = 0; i < model.materialCount; i++)
-    {
-        if (&model.materials[i] != nullptr)
-        {
-            model.materials[i].shader = shader;
-            TraceLog(LOG_INFO, "Shader applied to material %d", i);
-        }float cameraPos[3]
     // Konfiguracja światła
-    Light light = CreateLight(LIGHT_DIRECTIONAL, (Vector3){50.0f, 50.0f, 50.0f},
-                              (Vector3){0.0f, 0.0f, 0.0f}, WHITE, shader);
+    Light light = CreateLight(LIGHT_DIRECTIONAL, (Vector3){50.0f, 50.0f, 50.0f}, (Vector3){0.0f, 0.0f, 0.0f}, WHITE, shader);
     float lightIntensity = 1.0f;
     Vector3 lightPos = {50.0f, 50.0f, 50.0f};
-
-    // Zmienne kontrolujące model
-    float modelRotation = 0.0f;
-    auto modelColor = RED;
-    float normalizeScale = 10.0f;
-    float modelScale = 0.1f / normalizeScale;
 
     rlImGuiSetup(true);
     SetTargetFPS(60);
@@ -110,16 +94,13 @@ int main()
 
         // Aktualizacja światła
         light.position = lightPos;
+        UpdateLightValues(shader, light);
 
         BeginMode3D(camera);
         Vector3 position = {0.0f, 0.0f, 0.0f};
         Vector3 rotationAxis = {0.0f, 1.0f, 0.0f};
 
-        BeginShaderMode(shader);
-        UpdateLightValues(shader, light);
-        DrawModelEx(model, position, rotationAxis, modelRotation,
-                    (Vector3){modelScale, modelScale, modelScale}, modelColor);
-        EndShaderMode();
+        robotArm.Draw();
 
         DrawGrid(10, 1.0f);
         DrawSphereWires(light.position, 0.5f, 8, 8, YELLOW);
@@ -142,29 +123,13 @@ int main()
             ImGui::SliderFloat("FOV", &cameraFOV, 10.0f, 120.0f);
         }
 
-        // Kontrolki modelu
-        if (ImGui::CollapsingHeader("Model"))
-        {
-            ImGui::SliderFloat("Rotacja", &modelRotation, 0.0f, 360.0f);
-            ImGui::SliderFloat("Skala", &modelScale, 0.01f, 1.0f);
-
-            float color[4] = {
-                (float)modelColor.r / 255.0f, (float)modelColor.g / 255.0f,
-                (float)modelColor.b / 255.0f, (float)modelColor.a / 255.0f};
-
-            if (ImGui::ColorEdit4("Kolor modelu", color))
-            {
-                modelColor = (Color){(unsigned char)(color[0] * 255.0f),
-                                     (unsigned char)(color[1] * 255.0f),
-                                     (unsigned char)(color[2] * 255.0f),
-                                     (unsigned char)(color[3] * 255.0f)};
-            }
-        }
+        // Kontrolki ramienia robota
+        robotArm.DrawImGuiControls();
 
         // Kontrolki światła
         if (ImGui::CollapsingHeader("Światło"))
         {
-            ImGui::SliderFloat("Intensywność", &lightIntensity, 0.0f, 2.0f);
+            ImGui::SliderFloat("Intensywność", &lightIntensity, 0.0f, 1.0f);
             ImGui::SliderFloat("Światło X", &lightPos.x, -100.0f, 100.0f);
             ImGui::SliderFloat("Światło Y", &lightPos.y, -100.0f, 100.0f);
             ImGui::SliderFloat("Światło Z", &lightPos.z, -100.0f, 100.0f);
@@ -174,7 +139,7 @@ int main()
                                   (unsigned char)(255.0f * lightIntensity), 255};
         }
 
-        ImGui::Text("Model: %s", modelPath);
+        ImGui::Text("Model: %s", "assets/robot.glb");
 
         ImGui::End();
         rlImGuiEnd();
@@ -183,8 +148,6 @@ int main()
     }
 
     // Czyszczenie zasobów
-    UnloadModel(model);
-    UnloadShader(shader);
     rlImGuiShutdown();
     CloseWindow();
 

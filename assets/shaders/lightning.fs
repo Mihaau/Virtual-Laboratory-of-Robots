@@ -10,6 +10,7 @@ in vec3 fragNormal;
 uniform sampler2D texture0;
 uniform vec4 colDiffuse;
 uniform vec3 viewPos;
+uniform vec4 materialColor;
 
 // Input lighting values
 uniform vec4 ambient;
