@@ -43,37 +43,22 @@ RobotArm::~RobotArm() {
 }
 
 Matrix GetHierarchicalTransform(int meshIndex, ArmRotation* rotations, Vector3* pivotPoints) {
-    Matrix transform = MatrixIdentity();
+    if (meshIndex < 0) return MatrixIdentity();
     
-    // Apply transformations from root to current mesh
-    for (int i = 0; i <= meshIndex; i++) {
-        // Move to pivot point
-        Matrix translateToPivot = MatrixTranslate(
-            pivotPoints[i].x,
-            pivotPoints[i].y, 
-            pivotPoints[i].z
-        );
-        
-        // Rotate around pivot
-        Matrix rotation = MatrixRotate(
-            rotations[i].axis,
-            rotations[i].angle * DEG2RAD
-        );
-        
-        // Move back from pivot
-        Matrix translateBack = MatrixTranslate(
-            -pivotPoints[i].x,
-            -pivotPoints[i].y,
-            -pivotPoints[i].z
-        );
-        
-        // Combine local transformations
-        Matrix localTransform = MatrixMultiply(translateToPivot,
-            MatrixMultiply(rotation, translateBack));
-            
-        // Multiply with accumulated transform
-        transform = MatrixMultiply(transform, localTransform);
-    }
+    // Najpierw pobierz transformację rodzica
+    Matrix transform = GetHierarchicalTransform(meshIndex - 1, rotations, pivotPoints);
+    
+    // Przesuń do punktu obrotu (w przestrzeni globalnej)
+    transform = MatrixMultiply(transform, 
+        MatrixTranslate(pivotPoints[meshIndex].x, pivotPoints[meshIndex].y, pivotPoints[meshIndex].z));
+    
+    // Wykonaj rotację
+    transform = MatrixMultiply(transform,
+        MatrixRotate(rotations[meshIndex].axis, rotations[meshIndex].angle * DEG2RAD));
+    
+    // Przesuń z powrotem
+    transform = MatrixMultiply(transform,
+        MatrixTranslate(-pivotPoints[meshIndex].x, -pivotPoints[meshIndex].y, -pivotPoints[meshIndex].z));
     
     return transform;
 }
@@ -108,7 +93,10 @@ void RobotArm::DrawPivotPoints(bool show) {
             GetHierarchicalTransform(i - 1, meshRotations, pivotPoints);
             
         // Transform pivot point by parent transforms
-        Vector3 globalPivotPos = Vector3Transform(pivotPoints[i], parentTransform);
+        Vector3 globalPivotPos = Vector3Transform(Vector3Scale(pivotPoints[i], scale), parentTransform);
+        
+        // Invert y position
+        globalPivotPos.y = -globalPivotPos.y;
         
         // Visualize pivot point
         DrawSphere(globalPivotPos, 0.1f, YELLOW);
