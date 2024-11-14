@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include "robotArm.h"
+#include "camera.h"
 
 #define RLIGHTS_IMPLEMENTATION
 #include "rlights.h"
@@ -34,20 +35,22 @@ int main()
     SetShaderValue(shader, ambientLoc, (float[4]){0.2f, 0.2f, 0.2f, 1.0f},
                    SHADER_UNIFORM_VEC4);
 
-    // Zmienne kontrolujące kamerę
-    float cameraX = 10.0f;
-    float cameraY = 10.0f;
-    float cameraZ = 10.0f;
-    float cameraFOV = 45.0f;
-    float zoomSpeed = 1.0f;
-    float cameraDistance = 10.0f; // Początkowa odległość kamery
+    CameraController cameraController(10.0f, 10.0f, 10.0f);
 
-    Camera3D camera = {0};
-    camera.position = (Vector3){cameraX, cameraY, cameraZ};
-    camera.target = (Vector3){0.0f, 0.0f, 0.0f};
-    camera.up = (Vector3){0.0f, 1.0f, 0.0f};
-    camera.fovy = cameraFOV;
-    camera.projection = CAMERA_PERSPECTIVE;
+    // // Zmienne kontrolujące kamerę
+    // float cameraX = 10.0f;
+    // float cameraY = 10.0f;
+    // float cameraZ = 10.0f;
+    // float cameraFOV = 45.0f;
+    // float zoomSpeed = 1.0f;
+    // float cameraDistance = 10.0f; // Początkowa odległość kamery
+
+    // Camera3D camera = {0};
+    // camera.position = (Vector3){cameraX, cameraY, cameraZ};
+    // camera.target = (Vector3){0.0f, 0.0f, 0.0f};
+    // camera.up = (Vector3){0.0f, 1.0f, 0.0f};
+    // camera.fovy = cameraFOV;
+    // camera.projection = CAMERA_PERSPECTIVE;
 
     // Inicjalizacja ramienia robota
     RobotArm robotArm("assets/robot.glb", shader);
@@ -63,31 +66,35 @@ int main()
 
     while (!WindowShouldClose())
     {
-        if (float wheelMove = GetMouseWheelMove(); wheelMove != 0)
-        {
-            cameraDistance -= wheelMove * zoomSpeed;
-            // Ograniczenie minimalnej i maksymalnej odległości
-            cameraDistance = Clamp(cameraDistance, 1.0f, 100.0f);
+        if (float wheelMove = GetMouseWheelMove(); wheelMove != 0) {
+    cameraController.HandleZoom(wheelMove);
+}
+        // if (float wheelMove = GetMouseWheelMove(); wheelMove != 0)
+        // {
+        //     // cameraDistance -= wheelMove * zoomSpeed;
+        //     // // Ograniczenie minimalnej i maksymalnej odległości
+        //     // cameraDistance = Clamp(cameraDistance, 1.0f, 100.0f);
 
-            // Aktualizacja pozycji kamery zachowując kierunek
-            Vector3 direction =
-                Vector3Normalize(Vector3Subtract(camera.position, camera.target));
-            camera.position =
-                Vector3Add(camera.target, Vector3Scale(direction, cameraDistance));
+        //     // Aktualizacja pozycji kamery zachowując kierunek
+        //     Vector3 direction =
+        //         Vector3Normalize(Vector3Subtract(camera.position, camera.target));
+        //     camera.position =
+        //         Vector3Add(camera.target, Vector3Scale(direction, cameraDistance));
 
-            // Aktualizacja współrzędnych kamery
-            cameraX = camera.position.x;
-            cameraY = camera.position.y;
-            cameraZ = camera.position.z;
-        }
+        //     // Aktualizacja współrzędnych kamery
+        //     cameraX = camera.position.x;
+        //     cameraY = camera.position.y;
+        //     cameraZ = camera.position.z;
+        // }
         // Aktualizacja kamery
-        camera.position = (Vector3){cameraX, cameraY, cameraZ};
-        camera.fovy = cameraFOV;
+        // camera.position = (Vector3){cameraX, cameraY, cameraZ};
+        // camera.fovy = cameraFOV;
 
-        float cameraPos[3] = {camera.position.x, camera.position.y,
-                              camera.position.z};
-        SetShaderValue(shader, shader.locs[SHADER_LOC_VECTOR_VIEW], cameraPos,
-                       SHADER_UNIFORM_VEC3);
+        // float cameraPos[3] = {camera.position.x, camera.position.y,
+        //                       camera.position.z};
+        // SetShaderValue(shader, shader.locs[SHADER_LOC_VECTOR_VIEW], cameraPos,
+        //                SHADER_UNIFORM_VEC3);
+        cameraController.Update();
 
         BeginDrawing();
         ClearBackground(RAYWHITE);
@@ -96,9 +103,7 @@ int main()
         light.position = lightPos;
         UpdateLightValues(shader, light);
 
-        BeginMode3D(camera);
-        Vector3 position = {0.0f, 0.0f, 0.0f};
-        Vector3 rotationAxis = {0.0f, 1.0f, 0.0f};
+        BeginMode3D(cameraController.GetCamera());
 
         robotArm.Draw();
 
@@ -115,15 +120,15 @@ int main()
 
         ImGui::Begin("Konfiguracja", nullptr, ImGuiWindowFlags_NoMove);
 
-        // Kontrolki kamery
-        if (ImGui::CollapsingHeader("Kamera"))
-        {
-            ImGui::SliderFloat("Kamera X", &cameraX, -100.0f, 100.0f);
-            ImGui::SliderFloat("Kamera Y", &cameraY, -100.0f, 100.0f);
-            ImGui::SliderFloat("Kamera Z", &cameraZ, -100.0f, 100.0f);
-            ImGui::SliderFloat("FOV", &cameraFOV, 10.0f, 120.0f);
-        }
-
+        // // Kontrolki kamery
+        // if (ImGui::CollapsingHeader("Kamera"))
+        // {
+        //     ImGui::SliderFloat("Kamera X", &cameraX, -100.0f, 100.0f);
+        //     ImGui::SliderFloat("Kamera Y", &cameraY, -100.0f, 100.0f);
+        //     ImGui::SliderFloat("Kamera Z", &cameraZ, -100.0f, 100.0f);
+        //     ImGui::SliderFloat("FOV", &cameraFOV, 10.0f, 120.0f);
+        // }
+cameraController.DrawImGuiControls();
         // Kontrolki ramienia robota
         robotArm.DrawImGuiControls();
 
