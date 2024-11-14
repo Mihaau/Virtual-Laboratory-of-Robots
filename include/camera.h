@@ -21,12 +21,19 @@ private:
     Camera3D camera;
     float cameraDistance;
     float zoomSpeed;
+
+    float yaw;
+    float pitch;
+    Vector2 previousMousePosition;
+    float rotationSpeed;
     
     // Limity kamery
     static constexpr float MIN_DISTANCE = 1.0f;
     static constexpr float MAX_DISTANCE = 100.0f;
     static constexpr float MIN_FOV = 10.0f;
     static constexpr float MAX_FOV = 120.0f;
+        static constexpr float MIN_PITCH = -89.0f;
+    static constexpr float MAX_PITCH = 89.0f;
 };
 
 #endif // CAMERA_H

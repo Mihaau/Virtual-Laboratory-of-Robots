@@ -38,7 +38,7 @@ int main()
     CameraController cameraController(10.0f, 10.0f, 10.0f);
 
     // Inicjalizacja ramienia robota
-    RobotArm robotArm("assets/robot.glb", shader);
+    RobotArm robotArm("assets/models/robot.glb", shader);
     robotArm.SetScale(0.1f);
 
     // Konfiguracja światła
@@ -51,9 +51,10 @@ int main()
 
     while (!WindowShouldClose())
     {
-        if (float wheelMove = GetMouseWheelMove(); wheelMove != 0) {
-    cameraController.HandleZoom(wheelMove);
-}
+        if (float wheelMove = GetMouseWheelMove(); wheelMove != 0)
+        {
+            cameraController.HandleZoom(wheelMove);
+        }
         cameraController.Update();
 
         BeginDrawing();
@@ -80,7 +81,7 @@ int main()
 
         ImGui::Begin("Konfiguracja", nullptr, ImGuiWindowFlags_NoMove);
 
-cameraController.DrawImGuiControls();
+        cameraController.DrawImGuiControls();
         // Kontrolki ramienia robota
         robotArm.DrawImGuiControls();
 

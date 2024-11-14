@@ -39,7 +39,7 @@ public:
     bool GetMeshVisibility(int index) const { return meshVisibility[index]; }
     float GetMeshRotation(int index) const { return meshRotations[index].angle; }
     Vector3 GetRotationAxis(int index) const { return meshRotations[index].axis; }
-    void DrawPivotPoints(bool showPivots = true);
+    void DrawPivotPoints();
     Vector3 *GetPivotPoints() { return pivotPoints; }
     void SetPivotPoint(int index, Vector3 position);
 
