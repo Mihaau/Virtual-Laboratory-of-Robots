@@ -44,8 +44,8 @@ int main()
 
     // Ambient light
     int ambientLoc = GetShaderLocation(shader, "ambient");
-    SetShaderValue(shader, ambientLoc, (float[4]){0.2f, 0.2f, 0.2f, 1.0f},
-                   SHADER_UNIFORM_VEC4);
+    float ambientValues[4] = {0.2f, 0.2f, 0.2f, 1.0f};
+    SetShaderValue(shader, ambientLoc, ambientValues, SHADER_UNIFORM_VEC4);
 
     CameraController cameraController(10.0f, 10.0f, 10.0f);
 
@@ -56,7 +56,7 @@ int main()
     CodeEditor codeEditor;
 
     // Konfiguracja światła
-    Light light = CreateLight(LIGHT_DIRECTIONAL, (Vector3){50.0f, 50.0f, 50.0f}, (Vector3){0.0f, 0.0f, 0.0f}, WHITE, shader);
+    Light light = CreateLight(LIGHT_DIRECTIONAL, Vector3{50.0f, 50.0f, 50.0f}, Vector3{0.0f, 0.0f, 0.0f}, WHITE, shader);
     float lightIntensity = 1.0f;
     Vector3 lightPos = {50.0f, 50.0f, 50.0f};
 
@@ -114,9 +114,9 @@ int main()
                     ImGui::SliderFloat("Światło Y", &lightPos.y, -100.0f, 100.0f);
                     ImGui::SliderFloat("Światło Z", &lightPos.z, -100.0f, 100.0f);
 
-                    light.color = (Color){(unsigned char)(255.0f * lightIntensity),
-                                          (unsigned char)(255.0f * lightIntensity),
-                                          (unsigned char)(255.0f * lightIntensity), 255};
+                    light.color = Color{(unsigned char)(255.0f * lightIntensity),
+                                        (unsigned char)(255.0f * lightIntensity),
+                                        (unsigned char)(255.0f * lightIntensity), 255};
                 }
 
                 ImGui::Text("Model: %s", "assets/robot.glb");
@@ -135,59 +135,69 @@ int main()
 
         ImGui::End();
 
-// Toolbar na górze ekranu
-ImGui::SetNextWindowPos(ImVec2(0, 0));
-ImGui::SetNextWindowSize(ImVec2(screenWidth - 0.33 * screenWidth, 50));  // Stała wysokość 50px
+        // Toolbar na górze ekranu
+        ImGui::SetNextWindowPos(ImVec2(0, 0));
+        ImGui::SetNextWindowSize(ImVec2(screenWidth - 0.33 * screenWidth, 50)); // Stała wysokość 50px
 
-ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10, 10));
-ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10, 10));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
 
-ImGui::Begin("Toolbar", nullptr, 
-    ImGuiWindowFlags_NoMove | 
-    ImGuiWindowFlags_NoResize |
-    ImGuiWindowFlags_NoTitleBar | 
-    ImGuiWindowFlags_NoScrollbar);
+        ImGui::Begin("Toolbar", nullptr,
+                     ImGuiWindowFlags_NoMove |
+                         ImGuiWindowFlags_NoResize |
+                         ImGuiWindowFlags_NoTitleBar |
+                         ImGuiWindowFlags_NoScrollbar);
 
-float buttonSize = 32.0f;
-ImVec2 buttonDim(120, buttonSize);
+        float buttonSize = 32.0f;
+        ImVec2 buttonDim(120, buttonSize);
 
-// Styl przycisków
-ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
-ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.4f, 0.4f, 1.0f));
-ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-// Zwiększona szerokość dla tekstu
+        // Styl przycisków
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.4f, 0.4f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+        // Zwiększona szerokość dla tekstu
 
-if (ImGui::Button((std::string(ICON_FA_PLAY) + " Start").c_str(), buttonDim)) {}
-if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("Uruchom program");
-ImGui::SameLine();
+        if (ImGui::Button((std::string(ICON_FA_PLAY) + " Start").c_str(), buttonDim))
+        {
+        }
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Uruchom program");
+        ImGui::SameLine();
 
-if (ImGui::Button((std::string(ICON_FA_STOP) + " Stop").c_str(), buttonDim)) {}
-if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("Zatrzymaj program");
-ImGui::SameLine();
+        if (ImGui::Button((std::string(ICON_FA_STOP) + " Stop").c_str(), buttonDim))
+        {
+        }
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Zatrzymaj program");
+        ImGui::SameLine();
 
-if (ImGui::Button((std::string(ICON_FA_ARROW_TREND_UP) + " Debug").c_str(), buttonDim)) {}
-if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("Tryb debugowania");
-ImGui::SameLine();
+        if (ImGui::Button((std::string(ICON_FA_ARROW_TREND_UP) + " Debug").c_str(), buttonDim))
+        {
+        }
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Tryb debugowania");
+        ImGui::SameLine();
 
-if (ImGui::Button((std::string(ICON_FA_FILE_CIRCLE_XMARK) + " Reset").c_str(), buttonDim)) {}
-if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("Zresetuj program");
-ImGui::SameLine();
+        if (ImGui::Button((std::string(ICON_FA_FILE_CIRCLE_XMARK) + " Reset").c_str(), buttonDim))
+        {
+        }
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Zresetuj program");
+        ImGui::SameLine();
 
-if (ImGui::Button((std::string(ICON_FA_SPAGHETTI_MONSTER_FLYING) + " Config").c_str(), buttonDim)) {}
-if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("Konfiguracja programu");
+        if (ImGui::Button((std::string(ICON_FA_SPAGHETTI_MONSTER_FLYING) + " Config").c_str(), buttonDim))
+        {
+        }
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Konfiguracja programu");
 
-ImGui::PopStyleColor(3);
-ImGui::End();
-ImGui::PopStyleVar();
-ImGui::PopStyleColor();
+        ImGui::PopStyleColor(3);
+        ImGui::End();
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor();
 
-ImGui::SetNextWindowPos(ImVec2(0, 50));  // Offset o wysokość toolbara
-ImGui::SetNextWindowSize(ImVec2(screenWidth - 0.33 * screenWidth, screenHeight - 50));
+        ImGui::SetNextWindowPos(ImVec2(0, 50)); // Offset o wysokość toolbara
+        ImGui::SetNextWindowSize(ImVec2(screenWidth - 0.33 * screenWidth, screenHeight - 50));
 
         ImGui::Begin("Scene View", nullptr, ImGuiWindowFlags_NoMove);
         ImVec2 contentSize = ImGui::GetContentRegionAvail();

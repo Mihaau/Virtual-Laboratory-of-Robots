@@ -5,9 +5,9 @@ CameraController::CameraController(float x, float y, float z) : cameraDistance(1
                                                                 rotationSpeed(0.2f)
 {
     camera = {0};
-    camera.position = (Vector3){x, y, z};
-    camera.target = (Vector3){0.0f, 0.0f, 0.0f};
-    camera.up = (Vector3){0.0f, 1.0f, 0.0f};
+    camera.position = Vector3{x, y, z};
+    camera.target = Vector3{0.0f, 0.0f, 0.0f};
+    camera.up = Vector3{0.0f, 1.0f, 0.0f};
     camera.fovy = 45.0f;
     camera.projection = CAMERA_PERSPECTIVE;
 
@@ -32,7 +32,7 @@ void CameraController::Update() {
         float y = cameraDistance * sinf(DEG2RAD * pitch);
         float z = cameraDistance * cosf(DEG2RAD * pitch) * sinf(DEG2RAD * yaw);
 
-        camera.position = (Vector3){ x, y, z };
+        camera.position = Vector3{ x, y, z };
     }
     else if (IsMouseButtonDown(MOUSE_BUTTON_MIDDLE) || IsKeyDown(KEY_LEFT_CONTROL)) {
         // Nowa logika przesuwania kamery
