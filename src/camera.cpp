@@ -21,7 +21,7 @@ void CameraController::Update() {
         currentMousePosition.y - previousMousePosition.y
     };
 
-    if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
+    if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT) || IsKeyDown(KEY_LEFT_ALT)) {
         // Istniejąca logika obrotu kamery
         yaw += mouseDelta.x * rotationSpeed;
         pitch -= mouseDelta.y * rotationSpeed;
@@ -34,7 +34,7 @@ void CameraController::Update() {
 
         camera.position = (Vector3){ x, y, z };
     }
-    else if (IsMouseButtonDown(MOUSE_BUTTON_MIDDLE)) {
+    else if (IsMouseButtonDown(MOUSE_BUTTON_MIDDLE) || IsKeyDown(KEY_LEFT_CONTROL)) {
         // Nowa logika przesuwania kamery
         float panSpeed = 0.1f;
         
@@ -73,15 +73,13 @@ void CameraController::DrawImGuiControls()
 {
     if (ImGui::CollapsingHeader("Kamera"))
     {
-        Vector3 pos = camera.position;
-        if (ImGui::SliderFloat("Kamera X", &pos.x, -100.0f, 100.0f) ||
+        if (Vector3 pos = camera.position; ImGui::SliderFloat("Kamera X", &pos.x, -100.0f, 100.0f) ||
             ImGui::SliderFloat("Kamera Y", &pos.y, -100.0f, 100.0f) ||
             ImGui::SliderFloat("Kamera Z", &pos.z, -100.0f, 100.0f))
         {
             camera.position = pos;
         }
-        auto mode = camera.projection;
-        if (ImGui::RadioButton("Perspektywa", &mode, CAMERA_PERSPECTIVE) ||
+        if (auto mode = camera.projection; ImGui::RadioButton("Perspektywa", &mode, CAMERA_PERSPECTIVE) ||
             ImGui::RadioButton("Ortogonalna", &mode, CAMERA_ORTHOGRAPHIC))
         {
             camera.projection = mode;
