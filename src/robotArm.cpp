@@ -42,6 +42,14 @@ RobotArm::~RobotArm() {
     UnloadMaterial(defaultMaterial);
 }
 
+Vector3 TransformAxis(Vector3 axis, Matrix transform) {
+    Vector3 result;
+    result.x = axis.x * transform.m0 + axis.y * transform.m4 + axis.z * transform.m8;
+    result.y = axis.x * transform.m1 + axis.y * transform.m5 + axis.z * transform.m9;
+    result.z = axis.x * transform.m2 + axis.y * transform.m6 + axis.z * transform.m10;
+    return Vector3Normalize(result);
+}
+
 Matrix GetHierarchicalTransform(int meshIndex, ArmRotation* rotations, Vector3* pivotPoints) {
     if (meshIndex < 0) return MatrixIdentity();
     
@@ -52,9 +60,12 @@ Matrix GetHierarchicalTransform(int meshIndex, ArmRotation* rotations, Vector3* 
     transform = MatrixMultiply(transform, 
         MatrixTranslate(pivotPoints[meshIndex].x, pivotPoints[meshIndex].y, pivotPoints[meshIndex].z));
     
+    // Oblicz nową oś obrotu na podstawie poprzednich transformacji
+    Vector3 newAxis = TransformAxis(rotations[meshIndex].axis, transform);
+    
     // Wykonaj rotację
     transform = MatrixMultiply(transform,
-        MatrixRotate(rotations[meshIndex].axis, rotations[meshIndex].angle * DEG2RAD));
+        MatrixRotate(newAxis, rotations[meshIndex].angle * DEG2RAD));
     
     // Przesuń z powrotem
     transform = MatrixMultiply(transform,
@@ -62,6 +73,8 @@ Matrix GetHierarchicalTransform(int meshIndex, ArmRotation* rotations, Vector3* 
     
     return transform;
 }
+
+
 
 void RobotArm::Draw() {
     BeginShaderMode(shader);
