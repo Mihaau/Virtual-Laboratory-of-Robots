@@ -46,8 +46,8 @@ int main()
 
     // Ambient light
     int ambientLoc = GetShaderLocation(shader, "ambient");
-    SetShaderValue(shader, ambientLoc, (float[4]){0.2f, 0.2f, 0.2f, 1.0f},
-                   SHADER_UNIFORM_VEC4);
+    float ambientValues[4] = {0.2f, 0.2f, 0.2f, 1.0f};
+    SetShaderValue(shader, ambientLoc, ambientValues, SHADER_UNIFORM_VEC4);
 
     CameraController cameraController(10.0f, 10.0f, 10.0f);
 
@@ -60,7 +60,7 @@ int main()
     ToolBar toolBar(screenWidth);
 
     // Konfiguracja światła
-    Light light = CreateLight(LIGHT_DIRECTIONAL, (Vector3){50.0f, 50.0f, 50.0f}, (Vector3){0.0f, 0.0f, 0.0f}, WHITE, shader);
+    Light light = CreateLight(LIGHT_DIRECTIONAL, Vector3{50.0f, 50.0f, 50.0f}, Vector3{0.0f, 0.0f, 0.0f}, WHITE, shader);
     float lightIntensity = 1.0f;
     Vector3 lightPos = {50.0f, 50.0f, 50.0f};
 
@@ -118,9 +118,9 @@ int main()
                     ImGui::SliderFloat("Światło Y", &lightPos.y, -100.0f, 100.0f);
                     ImGui::SliderFloat("Światło Z", &lightPos.z, -100.0f, 100.0f);
 
-                    light.color = (Color){(unsigned char)(255.0f * lightIntensity),
-                                          (unsigned char)(255.0f * lightIntensity),
-                                          (unsigned char)(255.0f * lightIntensity), 255};
+                    light.color = Color{(unsigned char)(255.0f * lightIntensity),
+                                        (unsigned char)(255.0f * lightIntensity),
+                                        (unsigned char)(255.0f * lightIntensity), 255};
                 }
 
                 ImGui::Text("Model: %s", "assets/robot.glb");
