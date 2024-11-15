@@ -8,6 +8,7 @@
 #include "camera.h"
 #include "codeEditor.h"
 #include "extras/IconsFontAwesome6.h"
+#include "extras/FA6FreeSolidFontData.h"
 #include "assetBrowser.h"
 #include "toolbar.h"
 #include "lightController.h"
@@ -33,6 +34,34 @@ void UpdateRenderTexture(RenderTexture2D &target, const ImVec2 &size)
     }
 }
 
+void DrawSplashScreen(bool &showSplashScreen, Texture2D &logo)
+{
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImVec2 center = viewport->GetCenter();
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(ImVec2(600, 400));
+
+    if (ImGui::Begin("Splash Screen", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar))
+    {
+        ImVec2 windowSize = ImGui::GetWindowSize();
+        ImVec2 imageSize = ImVec2(int(2979 / 5.5), int(625 / 5.5));
+        ImVec2 imagePos = ImVec2((windowSize.x - imageSize.x) * 0.5f, ImGui::GetCursorPosY());
+        ImGui::SetCursorPos(imagePos);
+        rlImGuiImageSize(&logo, imageSize.x, imageSize.y);
+        ImGui::Separator();
+        ImGui::TextWrapped("Welcome to the Virtual Laboratory of Robots. This project allows you to simulate and control various robotic arms and other 3D objects in a virtual environment.");
+        ImGui::Separator();
+        ImGui::Text("Click to continue...");
+
+        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && ImGui::IsWindowHovered())
+        {
+            showSplashScreen = false;
+        }
+
+        ImGui::End();
+    }
+}
+
 int main()
 {
     const int screenWidth = 1920;
@@ -44,6 +73,8 @@ int main()
     SetWindowIcon(icon);
     UnloadImage(icon);
     RenderTexture2D target = LoadRenderTexture(1280, 720);
+    bool showSplashScreen = true;
+    Texture2D logo = LoadTexture("assets/images/banner.png");
 
     // Inicjalizacja shadera oświetlenia
     Shader shader =
@@ -70,7 +101,34 @@ int main()
     LightController lightController(shader);
 
     rlImGuiSetup(true);
-        ImGui::Options options;
+
+    // Załaduj czcionkę Roboto z odpowiednim zakresem znaków
+    ImGuiIO& io = ImGui::GetIO();
+    ImFontConfig fontConfig;
+    fontConfig.OversampleH = 3;
+    fontConfig.OversampleV = 1;
+    static const ImWchar ranges[] = {
+        0x0020, 0x00FF, // Podstawowy łaciński + rozszerzony łaciński
+        0x0100, 0x017F, // Rozszerzony łaciński-A
+        0x0180, 0x024F, // Rozszerzony łaciński-B
+        0x0250, 0x02AF, // IPA rozszerzony
+        0x2C60, 0x2C7F, // Łaciński rozszerzony-C
+        0xA720, 0xA7FF, // Łaciński rozszerzony-D
+        0,
+    };
+    ImFont* roboto = io.Fonts->AddFontFromFileTTF("assets/fonts/Roboto-Bold.ttf", 16.0f, &fontConfig, ranges);
+
+        static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
+    ImFontConfig icons_config; 
+    icons_config.MergeMode = true; 
+    icons_config.PixelSnapH = true;
+    io.Fonts->AddFontFromMemoryCompressedTTF(fa_solid_900_compressed_data, fa_solid_900_compressed_size, 16.0f, &icons_config, icons_ranges);
+
+    io.FontDefault = roboto;
+    io.Fonts->Build();
+    rlImGuiReloadFonts();
+
+    ImGui::Options options;
     options.ApplyTheme();
     SetTargetFPS(60);
 
@@ -89,7 +147,7 @@ int main()
         cameraController.Update();
         //////////////////////////////////////////////////////////////////////////////////////////
         BeginTextureMode(target);
-        ClearBackground(RAYWHITE);
+        ClearBackground(DARKGRAY);
 
         lightController.Update();
         BeginMode3D(cameraController.GetCamera());
@@ -179,6 +237,10 @@ int main()
         logWindow.Draw("Logs",
                        ImVec2(0, currentHeight - logWindowHeight),
                        ImVec2(currentWidth - sidebarWidth, logWindowHeight));
+        if(showSplashScreen)
+        {
+            DrawSplashScreen(showSplashScreen, logo);
+        }
         rlImGuiEnd();
 
         EndDrawing();

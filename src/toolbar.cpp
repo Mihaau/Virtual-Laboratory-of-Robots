@@ -23,7 +23,14 @@ void ToolBar::Draw() {
         ImGuiWindowFlags_NoTitleBar |
         ImGuiWindowFlags_NoScrollbar);
 
-    // Używamy stylów z motywu dla przycisków
+    // Oblicz szerokość wszystkich przycisków razem
+    float totalButtonWidth = buttons.size() * buttonDim.x + (buttons.size() - 1) * ImGui::GetStyle().ItemSpacing.x;
+    float offsetX = (screenWidth - totalButtonWidth) * 0.5f;
+
+    // Ustaw przesunięcie przed pierwszym przyciskiem
+    ImGui::SetCursorPosX(offsetX);
+
+    // Rysuj przyciski
     for (size_t i = 0; i < buttons.size(); i++) {
         if (i > 0) ImGui::SameLine();
         DrawButton(buttons[i]);

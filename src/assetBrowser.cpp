@@ -67,15 +67,9 @@ void AssetBrowser::GenerateThumbnail(AssetItem& item, bool shouldUnloadOldTextur
             item.config.thumbnail.size.height
         );
         BeginTextureMode(item.thumbnail);
-            Color bgColor = {
-                (unsigned char)item.config.thumbnail.background.r,
-                (unsigned char)item.config.thumbnail.background.g,
-                (unsigned char)item.config.thumbnail.background.b,
-                (unsigned char)item.config.thumbnail.background.a
-            };
-            ClearBackground(bgColor);
+            ClearBackground(DARKGRAY);
             Texture2D tex = LoadTextureFromImage(img);
-            DrawTexture(tex, 0, 0, WHITE);
+            DrawTexture(tex, 0, 0, DARKGRAY);
             UnloadTexture(tex);
         EndTextureMode();
         UnloadImage(img);
