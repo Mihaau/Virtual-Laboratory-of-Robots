@@ -10,6 +10,8 @@
 #include "extras/IconsFontAwesome6.h"
 #include "assetBrowser.h"
 #include "toolbar.h"
+#include "lightController.h"
+#include "object3D.h"
 
 #define RLIGHTS_IMPLEMENTATION
 #include "rlights.h"
@@ -41,28 +43,23 @@ int main()
         LoadShader(TextFormat("assets/shaders/lightning.vs", GLSL_VERSION),
                    TextFormat("assets/shaders/lightning.fs", GLSL_VERSION));
 
-    shader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(shader, "viewPos");
-    shader.locs[SHADER_LOC_MATRIX_MODEL] = GetShaderLocation(shader, "matModel");
-
-    // Ambient light
-    int ambientLoc = GetShaderLocation(shader, "ambient");
-    float ambientValues[4] = {0.2f, 0.2f, 0.2f, 1.0f};
-    SetShaderValue(shader, ambientLoc, ambientValues, SHADER_UNIFORM_VEC4);
-
     CameraController cameraController(10.0f, 10.0f, 10.0f);
 
     // Inicjalizacja ramienia robota
     RobotArm robotArm("assets/models/robot.glb", shader);
     robotArm.SetScale(0.005f);
 
+    Object3D cat("assets/models/cat.glb", shader);
+    cat.SetScale(0.1f);
+    cat.SetPosition(Vector3{2.0f, 0.0f, 2.0f});
+
     CodeEditor codeEditor;
     AssetBrowser assetBrowser;
     ToolBar toolBar(screenWidth);
 
-    // Konfiguracja światła
-    Light light = CreateLight(LIGHT_DIRECTIONAL, Vector3{50.0f, 50.0f, 50.0f}, Vector3{0.0f, 0.0f, 0.0f}, WHITE, shader);
-    float lightIntensity = 1.0f;
-    Vector3 lightPos = {50.0f, 50.0f, 50.0f};
+    shader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(shader, "viewPos");
+    shader.locs[SHADER_LOC_MATRIX_MODEL] = GetShaderLocation(shader, "matModel");
+    LightController lightController(shader);
 
     rlImGuiSetup(true);
     SetTargetFPS(60);
@@ -74,24 +71,23 @@ int main()
             cameraController.HandleZoom(wheelMove);
         }
         cameraController.Update();
-
+        //////////////////////////////////////////////////////////////////////////////////////////
         BeginTextureMode(target);
         ClearBackground(RAYWHITE);
 
-        // Aktualizacja światła
-        light.position = lightPos;
-        UpdateLightValues(shader, light);
-
+        lightController.Update();
         BeginMode3D(cameraController.GetCamera());
 
         robotArm.Draw();
-
+        cat.Draw();
         DrawGrid(10, 1.0f);
-        DrawSphereWires(light.position, 0.5f, 8, 8, YELLOW);
+        DrawSphereWires(lightController.GetLight().position, 0.5f, 8, 8, YELLOW);
         robotArm.DrawPivotPoints();
+
+
         EndMode3D();
         EndTextureMode();
-
+        ///////////////////////////////////////////////////////////////////////////////////////////
         BeginDrawing();
         ClearBackground(RAYWHITE);
 
@@ -109,19 +105,8 @@ int main()
             {
                 cameraController.DrawImGuiControls();
                 robotArm.DrawImGuiControls();
-
-                // Kontrolki światła
-                if (ImGui::CollapsingHeader("Światło"))
-                {
-                    ImGui::SliderFloat("Intensywność", &lightIntensity, 0.0f, 1.0f);
-                    ImGui::SliderFloat("Światło X", &lightPos.x, -100.0f, 100.0f);
-                    ImGui::SliderFloat("Światło Y", &lightPos.y, -100.0f, 100.0f);
-                    ImGui::SliderFloat("Światło Z", &lightPos.z, -100.0f, 100.0f);
-
-                    light.color = Color{(unsigned char)(255.0f * lightIntensity),
-                                        (unsigned char)(255.0f * lightIntensity),
-                                        (unsigned char)(255.0f * lightIntensity), 255};
-                }
+                cat.DrawImGuiControls();
+                lightController.DrawImGuiControls();
 
                 ImGui::Text("Model: %s", "assets/robot.glb");
                 ImGui::EndTabItem();
@@ -145,7 +130,7 @@ int main()
 
         ImGui::End();
         toolBar.Draw();
-        
+
         ImGui::SetNextWindowPos(ImVec2(0, 50)); // Offset o wysokość toolbara
         ImGui::SetNextWindowSize(ImVec2(screenWidth - 0.33 * screenWidth, screenHeight - 50));
 
