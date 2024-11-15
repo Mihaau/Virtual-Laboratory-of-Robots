@@ -179,7 +179,7 @@ int main()
             {
                 cameraController.DrawImGuiControls();
                 robotArm.DrawImGuiControls();
-                cat.DrawImGuiControls();
+                
                 lightController.DrawImGuiControls();
 
                 ImGui::Text("Model: %s", "assets/robot.glb");
@@ -197,6 +197,13 @@ int main()
                 {
                     logWindow.AddLog("To jest testowa wiadomość ERROR", LogLevel::Error);
                 }
+                ImGui::EndTabItem();
+            }
+
+            // Zakładka dla kontrolek ramienia robota
+            if (ImGui::BeginTabItem("Obiekty"))
+            {
+                cat.DrawImGuiControls();
                 ImGui::EndTabItem();
             }
 

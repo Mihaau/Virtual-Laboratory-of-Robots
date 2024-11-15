@@ -21,7 +21,8 @@ void ToolBar::Draw() {
         ImGuiWindowFlags_NoMove |
         ImGuiWindowFlags_NoResize |
         ImGuiWindowFlags_NoTitleBar |
-        ImGuiWindowFlags_NoScrollbar);
+        ImGuiWindowFlags_NoScrollbar|
+        ImGuiWindowFlags_NoScrollWithMouse);
 
     // Oblicz szerokość wszystkich przycisków razem
     float totalButtonWidth = buttons.size() * buttonDim.x + (buttons.size() - 1) * ImGui::GetStyle().ItemSpacing.x;

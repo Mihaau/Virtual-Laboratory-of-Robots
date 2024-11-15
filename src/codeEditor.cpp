@@ -32,8 +32,14 @@ void CodeEditor::Draw(const char* label) {
     ImVec2 size = ImGui::GetContentRegionAvail();
     size.y -= reserveHeight;
 
+    // Rozpocznij główny obszar edytora
+    ImGui::BeginChild("CodeEditorArea", size, true);
+    
     if (showLineNumbers) {
-        ImGui::BeginChild("##line_numbers", ImVec2(30, size.y), true);
+        ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 0.0f);
+        
+        // Pobierz pozycję przewijania z głównego okna
+        float scrollY = ImGui::GetScrollY();
         
         // Oblicz całkowitą liczbę linii
         int totalLines = 1;
@@ -41,26 +47,36 @@ void CodeEditor::Draw(const char* label) {
             if (*c == '\n') totalLines++;
         }
 
-        // Pobierz style i metryki
+        ImVec2 startPos = ImGui::GetCursorPos();
+        
+        // Osobne okno dla numerów linii bez paska przewijania
+        ImGui::BeginChild("##line_numbers", ImVec2(30, -1), true, 
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        
         float lineHeight = ImGui::GetTextLineHeight();
         float padding = ImGui::GetStyle().FramePadding.y;
-        
-        // Ustaw początkową pozycję Y uwzględniającą padding
-        float currentY = padding;
-        
-        // Renderuj numery linii
+        float currentY = padding - scrollY; // Uwzględnij przewijanie
+
         for (int i = 1; i <= totalLines; i++) {
             ImGui::SetCursorPosY(currentY);
             ImGui::Text("%d", i);
             currentY += lineHeight;
         }
-        
+
         ImGui::EndChild();
+        ImGui::PopStyleVar();
+        
         ImGui::SameLine();
         size.x -= 30;
     }
 
-    ImGui::InputTextMultiline(label, buffer, bufferSize, size, flags);
+    // Ustaw szerokość edytora tekstu
+    ImGui::PushItemWidth(size.x);
+    ImGui::InputTextMultiline(label, buffer, bufferSize, 
+        ImVec2(-1, -1), flags);
+    ImGui::PopItemWidth();
+    
+    ImGui::EndChild();
     ImGui::PopStyleVar();
 }
 
