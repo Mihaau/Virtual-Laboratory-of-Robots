@@ -46,10 +46,19 @@ void AssetBrowser::ScanDirectory(const std::string& path) {
     }
 }
 
-void AssetBrowser::GenerateThumbnail(AssetItem& item) {
+void AssetBrowser::GenerateThumbnail(AssetItem& item, bool shouldUnloadOldTexture) {
+
+        if (shouldUnloadOldTexture && item.thumbnail.id != 0) {
+        UnloadRenderTexture(item.thumbnail);
+    }
+
     fs::path modelDir = fs::path(item.path).parent_path() / 
                        ("." + fs::path(item.path).stem().string());
     fs::path thumbnailPath = modelDir / "thumbnail.png";
+
+        if (fs::exists(thumbnailPath) && shouldUnloadOldTexture) {
+        fs::remove(thumbnailPath);
+    }
 
     if (fs::exists(thumbnailPath)) {
         Image img = LoadImage(thumbnailPath.string().c_str());
@@ -226,7 +235,7 @@ if (ImGui::CollapsingHeader("Miniatura")) {
             if (ImGui::Button("Zapisz")) {
                 selectedItem->config = editingConfig;
                 editingConfig.SaveToFile(selectedItem->path);
-                GenerateThumbnail(*selectedItem);
+                GenerateThumbnail(*selectedItem, true);
                 showConfigEditor = false;
             }
             ImGui::SameLine();

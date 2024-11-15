@@ -39,6 +39,6 @@ private:
     ModelConfig editingConfig;
 
     void ScanDirectory(const std::string& path);
-    void GenerateThumbnail(AssetItem& item);
+    void GenerateThumbnail(AssetItem& item, bool shouldUnloadOldTexture = false);
     void LoadDescription(AssetItem& item);
 };
