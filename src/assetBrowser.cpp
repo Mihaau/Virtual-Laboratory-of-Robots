@@ -165,20 +165,79 @@ void AssetBrowser::DrawImGuiControls() {
                 ImGui::SameLine();
             }
 
-            ImGui::BeginGroup();
-            ImGui::PushID(i);
-            
-            rlImGuiImageRenderTexture(&assets[i].thumbnail);
-            
-            // Nazwa
-            ImGui::TextWrapped("%s", assets[i].name.c_str());
-            
-            ImGui::PopID();
-            ImGui::EndGroup();
+        ImGui::BeginGroup();
+        ImGui::PushID(i);
+        
+        // Dodaj detekcję prawego przycisku myszy
+        rlImGuiImageRenderTexture(&assets[i].thumbnail);
+        if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(1)) { // 1 = prawy przycisk
+            ImGui::OpenPopup("asset_context_menu");
+            selectedItem = &assets[i];
+        }
+
+        // Menu kontekstowe
+        if (ImGui::BeginPopup("asset_context_menu")) {
+            if (ImGui::MenuItem("Dodaj do sceny")) {
+                // TODO: Implementacja dodawania modelu do sceny
+                ImGui::CloseCurrentPopup();
+            }
+            if (ImGui::MenuItem("Edytuj konfigurację")) {
+                showConfigEditor = true;
+                editingConfig = selectedItem->config;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+
+        ImGui::TextWrapped("%s", assets[i].name.c_str());
+        ImGui::PopID();
+        ImGui::EndGroup();
         }
     }
     ImGui::EndChild();
     ImGui::PopStyleVar();
+
+
+    // Okno edycji konfiguracji
+    if (showConfigEditor && selectedItem) {
+        ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
+        if (ImGui::Begin("Edycja konfiguracji", &showConfigEditor)) {
+            ImGui::Text("Model: %s", selectedItem->name.c_str());
+            
+            if (ImGui::CollapsingHeader("Model")) {
+                ImGui::DragFloat("Skala", &editingConfig.model.scale, 0.01f, 0.01f, 10.0f);
+                ImGui::DragFloat3("Rotacja", &editingConfig.model.rotation.x, 1.0f, -360.0f, 360.0f);
+                ImGui::DragFloat3("Pozycja", &editingConfig.model.position.x, 0.1f);
+            }
+
+if (ImGui::CollapsingHeader("Miniatura")) {
+    ImGui::ColorEdit4("Tło", &editingConfig.thumbnail.background.r);
+    ImGui::DragFloat2("Rozmiar", (float*)&editingConfig.thumbnail.size.width, 1.0f, 32.0f, 512.0f);
+    
+                
+                if (ImGui::TreeNode("Kamera")) {
+                    ImGui::DragFloat3("Pozycja", &editingConfig.thumbnail.camera.position.x, 0.1f);
+                    ImGui::DragFloat3("Cel", &editingConfig.thumbnail.camera.target.x, 0.1f);
+                    ImGui::DragFloat("FOV", &editingConfig.thumbnail.camera.fov, 1.0f, 1.0f, 120.0f);
+                    ImGui::TreePop();
+                }
+            }
+
+            if (ImGui::Button("Zapisz")) {
+                selectedItem->config = editingConfig;
+                editingConfig.SaveToFile(selectedItem->path);
+                GenerateThumbnail(*selectedItem);
+                showConfigEditor = false;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Anuluj")) {
+                showConfigEditor = false;
+            }
+        }
+        ImGui::End();
+    }
+
+
 }
 
 AssetBrowser::~AssetBrowser() {

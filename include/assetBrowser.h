@@ -34,6 +34,10 @@ private:
     Shader shader;
     LightController* lightController;
 
+    bool showConfigEditor = false;
+    AssetItem* selectedItem = nullptr;
+    ModelConfig editingConfig;
+
     void ScanDirectory(const std::string& path);
     void GenerateThumbnail(AssetItem& item);
     void LoadDescription(AssetItem& item);
