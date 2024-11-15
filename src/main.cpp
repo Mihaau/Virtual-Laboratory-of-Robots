@@ -13,6 +13,7 @@
 #include "lightController.h"
 #include "object3D.h"
 #include "logWindow.h"
+#include "imgui_theme.h"
 
 #define RLIGHTS_IMPLEMENTATION
 #include "rlights.h"
@@ -39,6 +40,9 @@ int main()
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(screenWidth, screenHeight, "Virtual Laboratory of Robots");
     SetWindowMinSize(1280, 720);
+    Image icon = LoadImage("assets/images/icon.png");
+    SetWindowIcon(icon);
+    UnloadImage(icon);
     RenderTexture2D target = LoadRenderTexture(1280, 720);
 
     // Inicjalizacja shadera oświetlenia
@@ -66,6 +70,8 @@ int main()
     LightController lightController(shader);
 
     rlImGuiSetup(true);
+        ImGui::Options options;
+    options.ApplyTheme();
     SetTargetFPS(60);
 
     while (!WindowShouldClose())
@@ -98,14 +104,14 @@ int main()
         EndTextureMode();
         ///////////////////////////////////////////////////////////////////////////////////////////
         BeginDrawing();
-        ClearBackground(RAYWHITE);
+        ClearBackground(DARKGRAY);
 
         toolBar.UpdateScreenWidth(currentWidth);
 
         // Interfejs ImGui
         rlImGuiBegin();
-        ImGui::SetNextWindowPos(ImVec2(currentWidth - sidebarWidth, 0));
-        ImGui::SetNextWindowSize(ImVec2(sidebarWidth, currentHeight));
+        ImGui::SetNextWindowPos(ImVec2(currentWidth - sidebarWidth, toolbarHeight));
+        ImGui::SetNextWindowSize(ImVec2(sidebarWidth, currentHeight - toolbarHeight));
 
         ImGui::Begin("Konfiguracja", nullptr, ImGuiWindowFlags_NoMove);
         if (ImGui::BeginTabBar("OpcjeTabBar"))
@@ -119,6 +125,20 @@ int main()
                 lightController.DrawImGuiControls();
 
                 ImGui::Text("Model: %s", "assets/robot.glb");
+
+                // Dodanie przycisków do wysyłania testowych wiadomości logów
+                if (ImGui::Button("Dodaj log INFO"))
+                {
+                    logWindow.AddLog("To jest testowa wiadomość INFO", LogLevel::Info);
+                }
+                if (ImGui::Button("Dodaj log WARN"))
+                {
+                    logWindow.AddLog("To jest testowa wiadomość WARN", LogLevel::Warning);
+                }
+                if (ImGui::Button("Dodaj log ERROR"))
+                {
+                    logWindow.AddLog("To jest testowa wiadomość ERROR", LogLevel::Error);
+                }
                 ImGui::EndTabItem();
             }
 
@@ -141,7 +161,7 @@ int main()
         ImGui::End();
 
         ImGui::SetNextWindowPos(ImVec2(0, 0));
-        ImGui::SetNextWindowSize(ImVec2(currentWidth - sidebarWidth, toolbarHeight));
+        ImGui::SetNextWindowSize(ImVec2(currentWidth, toolbarHeight));
         toolBar.Draw();
 
         ImGui::SetNextWindowPos(ImVec2(0, toolbarHeight));
@@ -153,7 +173,6 @@ int main()
         rlImGuiImageRenderTextureFit(&target, true);
         cameraController.SetSceneViewActive(ImGui::IsWindowHovered());
         ImGui::End();
-
 
         ImGui::SetNextWindowPos(ImVec2(0, currentHeight - logWindowHeight));
         ImGui::SetNextWindowSize(ImVec2(currentWidth - sidebarWidth, logWindowHeight));

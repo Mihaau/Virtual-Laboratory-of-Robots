@@ -1,3 +1,4 @@
+// toolbar.cpp
 #include "toolbar.h"
 
 ToolBar::ToolBar(float screenWidth) : screenWidth(screenWidth), buttonSize(32.0f) {
@@ -13,29 +14,23 @@ ToolBar::ToolBar(float screenWidth) : screenWidth(screenWidth), buttonSize(32.0f
 }
 
 void ToolBar::Draw() {
-
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10, 10));
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
-
+    
+    // Używamy kolorów z motywu Catppuccin Mocha
     ImGui::Begin("Toolbar", nullptr,
         ImGuiWindowFlags_NoMove |
         ImGuiWindowFlags_NoResize |
         ImGuiWindowFlags_NoTitleBar |
         ImGuiWindowFlags_NoScrollbar);
 
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.4f, 0.4f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-
+    // Używamy stylów z motywu dla przycisków
     for (size_t i = 0; i < buttons.size(); i++) {
         if (i > 0) ImGui::SameLine();
         DrawButton(buttons[i]);
     }
 
-    ImGui::PopStyleColor(3);
     ImGui::End();
     ImGui::PopStyleVar();
-    ImGui::PopStyleColor();
 }
 
 void ToolBar::DrawButton(const Button& button) {
