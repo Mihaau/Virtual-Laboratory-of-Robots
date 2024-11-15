@@ -12,6 +12,7 @@
 #include "toolbar.h"
 #include "lightController.h"
 #include "object3D.h"
+#include "logWindow.h"
 
 #define RLIGHTS_IMPLEMENTATION
 #include "rlights.h"
@@ -35,7 +36,9 @@ int main()
 {
     const int screenWidth = 1920;
     const int screenHeight = 1080;
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(screenWidth, screenHeight, "Virtual Laboratory of Robots");
+    SetWindowMinSize(1280, 720);
     RenderTexture2D target = LoadRenderTexture(1280, 720);
 
     // Inicjalizacja shadera oświetlenia
@@ -50,12 +53,13 @@ int main()
     robotArm.SetScale(0.005f);
 
     Object3D cat("assets/models/cat.glb", shader);
-    cat.SetScale(0.1f);
-    cat.SetPosition(Vector3{2.0f, 0.0f, 2.0f});
+    cat.SetScale(0.01f);
+    cat.SetPosition(Vector3{5.0f, 0.0f, 2.0f});
 
     CodeEditor codeEditor;
     AssetBrowser assetBrowser;
     ToolBar toolBar(screenWidth);
+    LogWindow logWindow;
 
     shader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(shader, "viewPos");
     shader.locs[SHADER_LOC_MATRIX_MODEL] = GetShaderLocation(shader, "matModel");
@@ -66,6 +70,12 @@ int main()
 
     while (!WindowShouldClose())
     {
+        const float currentWidth = (float)GetScreenWidth();
+        const float currentHeight = (float)GetScreenHeight();
+        const float sidebarWidth = currentWidth * 0.4; // 33% of window width
+        const float toolbarHeight = 50.0f;
+        const float logWindowHeight = 200.0f; // Wysokość okna logów
+
         if (float wheelMove = GetMouseWheelMove(); wheelMove != 0)
         {
             cameraController.HandleZoom(wheelMove);
@@ -84,18 +94,18 @@ int main()
         DrawSphereWires(lightController.GetLight().position, 0.5f, 8, 8, YELLOW);
         robotArm.DrawPivotPoints();
 
-
         EndMode3D();
         EndTextureMode();
         ///////////////////////////////////////////////////////////////////////////////////////////
         BeginDrawing();
         ClearBackground(RAYWHITE);
 
+        toolBar.UpdateScreenWidth(currentWidth);
+
         // Interfejs ImGui
         rlImGuiBegin();
-        ImGui::SetNextWindowPos(ImVec2(screenWidth - 0.33 * screenWidth, 0),
-                                ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize(ImVec2(0.33 * screenWidth, screenHeight), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(ImVec2(currentWidth - sidebarWidth, 0));
+        ImGui::SetNextWindowSize(ImVec2(sidebarWidth, currentHeight));
 
         ImGui::Begin("Konfiguracja", nullptr, ImGuiWindowFlags_NoMove);
         if (ImGui::BeginTabBar("OpcjeTabBar"))
@@ -129,16 +139,27 @@ int main()
         }
 
         ImGui::End();
+
+        ImGui::SetNextWindowPos(ImVec2(0, 0));
+        ImGui::SetNextWindowSize(ImVec2(currentWidth - sidebarWidth, toolbarHeight));
         toolBar.Draw();
 
-        ImGui::SetNextWindowPos(ImVec2(0, 50)); // Offset o wysokość toolbara
-        ImGui::SetNextWindowSize(ImVec2(screenWidth - 0.33 * screenWidth, screenHeight - 50));
+        ImGui::SetNextWindowPos(ImVec2(0, toolbarHeight));
+        ImGui::SetNextWindowSize(ImVec2(currentWidth - sidebarWidth, currentHeight - toolbarHeight - logWindowHeight));
 
         ImGui::Begin("Scene View", nullptr, ImGuiWindowFlags_NoMove);
         ImVec2 contentSize = ImGui::GetContentRegionAvail();
         UpdateRenderTexture(target, contentSize);
         rlImGuiImageRenderTextureFit(&target, true);
+        cameraController.SetSceneViewActive(ImGui::IsWindowHovered());
         ImGui::End();
+
+
+        ImGui::SetNextWindowPos(ImVec2(0, currentHeight - logWindowHeight));
+        ImGui::SetNextWindowSize(ImVec2(currentWidth - sidebarWidth, logWindowHeight));
+        logWindow.Draw("Logs",
+                       ImVec2(0, currentHeight - logWindowHeight),
+                       ImVec2(currentWidth - sidebarWidth, logWindowHeight));
         rlImGuiEnd();
 
         EndDrawing();

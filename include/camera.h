@@ -12,6 +12,7 @@ public:
     void Update();
     void DrawImGuiControls();
     void HandleZoom(float wheelMove);
+    void SetSceneViewActive(bool active) { isSceneViewActive = active; }
     
     Camera3D& GetCamera() { return camera; }
     const Vector3& GetPosition() const { return camera.position; }
@@ -26,6 +27,8 @@ private:
     float pitch;
     Vector2 previousMousePosition;
     float rotationSpeed;
+
+    bool isSceneViewActive = false;
     
     // Limity kamery
     static constexpr float MIN_DISTANCE = 1.0f;

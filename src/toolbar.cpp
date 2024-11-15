@@ -13,8 +13,6 @@ ToolBar::ToolBar(float screenWidth) : screenWidth(screenWidth), buttonSize(32.0f
 }
 
 void ToolBar::Draw() {
-    ImGui::SetNextWindowPos(ImVec2(0, 0));
-    ImGui::SetNextWindowSize(ImVec2(screenWidth - 0.33f * screenWidth, 50));
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10, 10));
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
