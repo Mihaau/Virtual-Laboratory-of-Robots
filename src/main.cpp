@@ -288,6 +288,7 @@ int main()
         ImGui::Begin("Scene View", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
         ImVec2 contentSize = ImGui::GetContentRegionAvail();
         UpdateRenderTexture(target, contentSize);
+        GenTextureMipmaps(&target.texture);
         SetTextureFilter(target.texture, currentTextureFilter);
         rlImGuiImageRenderTextureFit(&target, true);
         cameraController.SetSceneViewActive(ImGui::IsWindowHovered());
