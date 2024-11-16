@@ -23,7 +23,14 @@ private:
     int colorLoc;
     Material defaultMaterial;
     Vector3 *pivotPoints;
+    float *armLengths;
+    Vector3 targetPosition;
+    bool useIK;
     bool showPivotPoints;
+
+    void SolveIK();
+    float ClampAngle(float angle, float min, float max);
+    Vector3 CalculateEndEffectorPosition();
 
 public:
     RobotArm(const char *modelPath, Shader shader);
