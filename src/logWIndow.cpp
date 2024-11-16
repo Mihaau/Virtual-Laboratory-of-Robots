@@ -7,7 +7,7 @@ void LogWindow::Draw(const char* title, const ImVec2& position, const ImVec2& si
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
     
-    if (ImGui::Begin(title, nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)) {
+    if (ImGui::Begin(title, nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
         // Toolbar
         if (ImGui::Button("Clear")) Clear();
         ImGui::SameLine();

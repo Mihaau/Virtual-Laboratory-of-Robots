@@ -10,6 +10,7 @@
 #include <fstream>
 #include <iomanip>
 #include "modelConfig.h"
+#include <functional>
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -27,6 +28,7 @@ public:
     AssetBrowser();
     ~AssetBrowser();
     void DrawImGuiControls();
+    std::function<void(const char*)> onAddObjectToScene;
 
 private:
     std::vector<AssetItem> assets;

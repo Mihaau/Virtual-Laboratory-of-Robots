@@ -36,7 +36,7 @@ void UpdateRenderTexture(RenderTexture2D &target, const ImVec2 &size)
 
 void DrawSplashScreen(bool &showSplashScreen, Texture2D &logo)
 {
-    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    const ImGuiViewport *viewport = ImGui::GetMainViewport();
     ImVec2 center = viewport->GetCenter();
     ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(ImVec2(600, 400));
@@ -75,6 +75,7 @@ int main()
     RenderTexture2D target = LoadRenderTexture(1280, 720);
     bool showSplashScreen = true;
     Texture2D logo = LoadTexture("assets/images/banner.png");
+    std::vector<Object3D *> sceneObjects;
 
     // Inicjalizacja shadera oświetlenia
     Shader shader =
@@ -87,12 +88,18 @@ int main()
     RobotArm robotArm("assets/models/robot.glb", shader);
     robotArm.SetScale(0.005f);
 
-    Object3D cat("assets/models/cat.glb", shader);
-    cat.SetScale(0.01f);
-    cat.SetPosition(Vector3{5.0f, 0.0f, 2.0f});
+    // Object3D cat("assets/models/cat.glb", shader);
+    // cat.SetScale(0.01f);
+    // cat.SetPosition(Vector3{5.0f, 0.0f, 2.0f});
 
     CodeEditor codeEditor;
     AssetBrowser assetBrowser;
+    assetBrowser.onAddObjectToScene = [&shader, &sceneObjects](const char *modelPath)
+    {
+        Object3D *obj = Object3D::Create(modelPath, shader);
+        sceneObjects.push_back(obj);
+    };
+
     ToolBar toolBar(screenWidth);
     LogWindow logWindow;
 
@@ -103,24 +110,30 @@ int main()
     rlImGuiSetup(true);
 
     // Załaduj czcionkę Roboto z odpowiednim zakresem znaków
-    ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO &io = ImGui::GetIO();
     ImFontConfig fontConfig;
     fontConfig.OversampleH = 3;
     fontConfig.OversampleV = 1;
     static const ImWchar ranges[] = {
-        0x0020, 0x00FF, // Podstawowy łaciński + rozszerzony łaciński
-        0x0100, 0x017F, // Rozszerzony łaciński-A
-        0x0180, 0x024F, // Rozszerzony łaciński-B
-        0x0250, 0x02AF, // IPA rozszerzony
-        0x2C60, 0x2C7F, // Łaciński rozszerzony-C
-        0xA720, 0xA7FF, // Łaciński rozszerzony-D
+        0x0020,
+        0x00FF, // Podstawowy łaciński + rozszerzony łaciński
+        0x0100,
+        0x017F, // Rozszerzony łaciński-A
+        0x0180,
+        0x024F, // Rozszerzony łaciński-B
+        0x0250,
+        0x02AF, // IPA rozszerzony
+        0x2C60,
+        0x2C7F, // Łaciński rozszerzony-C
+        0xA720,
+        0xA7FF, // Łaciński rozszerzony-D
         0,
     };
-    ImFont* roboto = io.Fonts->AddFontFromFileTTF("assets/fonts/Roboto-Bold.ttf", 16.0f, &fontConfig, ranges);
+    ImFont *roboto = io.Fonts->AddFontFromFileTTF("assets/fonts/Roboto-Bold.ttf", 16.0f, &fontConfig, ranges);
 
-        static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
-    ImFontConfig icons_config; 
-    icons_config.MergeMode = true; 
+    static const ImWchar icons_ranges[] = {ICON_MIN_FA, ICON_MAX_FA, 0};
+    ImFontConfig icons_config;
+    icons_config.MergeMode = true;
     icons_config.PixelSnapH = true;
     io.Fonts->AddFontFromMemoryCompressedTTF(fa_solid_900_compressed_data, fa_solid_900_compressed_size, 16.0f, &icons_config, icons_ranges);
 
@@ -153,7 +166,10 @@ int main()
         BeginMode3D(cameraController.GetCamera());
 
         robotArm.Draw();
-        cat.Draw();
+        for (auto *obj : sceneObjects)
+        {
+            obj->Draw();
+        }
         DrawGrid(10, 1.0f);
         DrawSphereWires(lightController.GetLight().position, 0.5f, 8, 8, YELLOW);
         robotArm.DrawPivotPoints();
@@ -171,7 +187,7 @@ int main()
         ImGui::SetNextWindowPos(ImVec2(currentWidth - sidebarWidth, toolbarHeight));
         ImGui::SetNextWindowSize(ImVec2(sidebarWidth, currentHeight - toolbarHeight));
 
-        ImGui::Begin("Konfiguracja", nullptr, ImGuiWindowFlags_NoMove);
+        ImGui::Begin("Konfiguracja", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
         if (ImGui::BeginTabBar("OpcjeTabBar"))
         {
             // Zakładka dla kontrolek kamery
@@ -179,7 +195,7 @@ int main()
             {
                 cameraController.DrawImGuiControls();
                 robotArm.DrawImGuiControls();
-                
+
                 lightController.DrawImGuiControls();
 
                 ImGui::Text("Model: %s", "assets/robot.glb");
@@ -203,7 +219,10 @@ int main()
             // Zakładka dla kontrolek ramienia robota
             if (ImGui::BeginTabItem("Obiekty"))
             {
-                cat.DrawImGuiControls();
+                for (auto *obj : sceneObjects)
+                {
+                    obj->DrawImGuiControls();
+                }
                 ImGui::EndTabItem();
             }
 
@@ -232,7 +251,7 @@ int main()
         ImGui::SetNextWindowPos(ImVec2(0, toolbarHeight));
         ImGui::SetNextWindowSize(ImVec2(currentWidth - sidebarWidth, currentHeight - toolbarHeight - logWindowHeight));
 
-        ImGui::Begin("Scene View", nullptr, ImGuiWindowFlags_NoMove);
+        ImGui::Begin("Scene View", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
         ImVec2 contentSize = ImGui::GetContentRegionAvail();
         UpdateRenderTexture(target, contentSize);
         rlImGuiImageRenderTextureFit(&target, true);
@@ -244,7 +263,7 @@ int main()
         logWindow.Draw("Logs",
                        ImVec2(0, currentHeight - logWindowHeight),
                        ImVec2(currentWidth - sidebarWidth, logWindowHeight));
-        if(showSplashScreen)
+        if (showSplashScreen)
         {
             DrawSplashScreen(showSplashScreen, logo);
         }
@@ -252,6 +271,11 @@ int main()
 
         EndDrawing();
     }
+    for (auto *obj : sceneObjects)
+    {
+        delete obj;
+    }
+    sceneObjects.clear();
 
     // Czyszczenie zasobów
     rlImGuiShutdown();
