@@ -66,13 +66,13 @@ int main()
 {
     const int screenWidth = 1920;
     const int screenHeight = 1080;
-    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT);
     InitWindow(screenWidth, screenHeight, "Virtual Laboratory of Robots");
     SetWindowMinSize(1280, 720);
     Image icon = LoadImage("assets/images/icon.png");
     SetWindowIcon(icon);
     UnloadImage(icon);
-    RenderTexture2D target = LoadRenderTexture(1280, 720);
+    RenderTexture2D target = LoadRenderTexture(1920, 1080);
     bool showSplashScreen = true;
     Texture2D logo = LoadTexture("assets/images/banner.png");
     std::vector<Object3D *> sceneObjects;
@@ -254,6 +254,7 @@ int main()
         ImGui::Begin("Scene View", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
         ImVec2 contentSize = ImGui::GetContentRegionAvail();
         UpdateRenderTexture(target, contentSize);
+        SetTextureFilter(target.texture, TEXTURE_FILTER_TRILINEAR);
         rlImGuiImageRenderTextureFit(&target, true);
         cameraController.SetSceneViewActive(ImGui::IsWindowHovered());
         ImGui::End();
@@ -278,6 +279,8 @@ int main()
     sceneObjects.clear();
 
     // Czyszczenie zasobów
+    UnloadRenderTexture(target);
+    UnloadShader(shader);
     rlImGuiShutdown();
     CloseWindow();
 
