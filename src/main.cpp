@@ -76,6 +76,7 @@ int main()
     bool showSplashScreen = true;
     Texture2D logo = LoadTexture("assets/images/banner.png");
     std::vector<Object3D *> sceneObjects;
+    TextureFilter currentTextureFilter = TEXTURE_FILTER_TRILINEAR;
 
     // Inicjalizacja shadera oświetlenia
     Shader shader =
@@ -239,6 +240,39 @@ int main()
                 ImGui::EndTabItem();
             }
 
+            if (ImGui::BeginTabItem("Ustawienia"))
+{
+    ImGui::Text("Filtrowanie tekstur:");
+    
+    const char* filters[] = {
+        "Point (Nearest Neighbor)",
+        "Bilinear",
+        "Trilinear"
+    };
+    
+    static int currentFilter = 2; // Domyślnie Trilinear
+    
+    if (ImGui::Combo("Filtr", &currentFilter, filters, IM_ARRAYSIZE(filters)))
+    {
+        switch (currentFilter)
+        {
+            case 0:
+                currentTextureFilter = TEXTURE_FILTER_POINT;
+                break;
+            case 1:
+                currentTextureFilter = TEXTURE_FILTER_BILINEAR;
+                break;
+            case 2:
+                currentTextureFilter = TEXTURE_FILTER_TRILINEAR;
+                break;
+        }
+    }
+    
+    ImGui::TextWrapped("Aktualny filtr: %s", filters[currentFilter]);
+    
+    ImGui::EndTabItem();
+}
+
             ImGui::EndTabBar();
         }
 
@@ -254,7 +288,7 @@ int main()
         ImGui::Begin("Scene View", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
         ImVec2 contentSize = ImGui::GetContentRegionAvail();
         UpdateRenderTexture(target, contentSize);
-        SetTextureFilter(target.texture, TEXTURE_FILTER_TRILINEAR);
+        SetTextureFilter(target.texture, currentTextureFilter);
         rlImGuiImageRenderTextureFit(&target, true);
         cameraController.SetSceneViewActive(ImGui::IsWindowHovered());
         ImGui::End();
