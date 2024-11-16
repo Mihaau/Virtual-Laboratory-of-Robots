@@ -29,7 +29,7 @@ void CameraController::Update()
 
     if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT) || IsKeyDown(KEY_LEFT_ALT))
     {
-        // Istniejąca logika obrotu kamery
+        // Logika obrotu kamery
         yaw += mouseDelta.x * rotationSpeed;
         pitch -= mouseDelta.y * rotationSpeed;
 
@@ -39,7 +39,7 @@ void CameraController::Update()
         float y = cameraDistance * sinf(DEG2RAD * pitch);
         float z = cameraDistance * cosf(DEG2RAD * pitch) * sinf(DEG2RAD * yaw);
 
-        camera.position = Vector3{x, y, z};
+        camera.position = Vector3Add(camera.target, Vector3{x, y, z});
     }
     else if (IsMouseButtonDown(MOUSE_BUTTON_MIDDLE) || IsKeyDown(KEY_LEFT_CONTROL))
     {
