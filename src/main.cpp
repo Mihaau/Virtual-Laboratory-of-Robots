@@ -53,7 +53,7 @@ void DrawSplashScreen(bool &showSplashScreen, Texture2D &logo)
         ImGui::Separator();
         ImGui::Text("Click to continue...");
 
-        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && ImGui::IsWindowHovered())
+        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT))
         {
             showSplashScreen = false;
         }
