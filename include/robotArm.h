@@ -4,6 +4,7 @@
 #include "rlImGui.h"
 #include "imgui.h"
 #include "string"
+#include "vector"
 
 struct ArmRotation
 {
@@ -27,6 +28,11 @@ private:
     Vector3 targetPosition;
     bool useIK;
     bool showPivotPoints;
+    std::vector<Vector3> trajectoryPoints;
+    bool showTrajectory = false;
+        bool isAnimating = false;
+    float animationTime = 0.0f;
+    const float ANIMATION_DURATION = 2.0f;
 
     void SolveIK();
     float ClampAngle(float angle, float min, float max);
@@ -37,6 +43,7 @@ public:
     ~RobotArm();
 
     void Draw();
+    void Update();
     void UpdateRotation(int meshIndex, float angle);
     void SetMeshVisibility(int meshIndex, bool visible);
     void SetScale(float newScale) { scale = newScale; }
@@ -49,6 +56,8 @@ public:
     void DrawPivotPoints();
     Vector3 *GetPivotPoints() { return pivotPoints; }
     void SetPivotPoint(int index, Vector3 position);
+        void CalculateTrajectory();
+    void DrawTrajectory();
 
     void DrawImGuiControls();
 };

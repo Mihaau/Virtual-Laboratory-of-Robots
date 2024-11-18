@@ -29,7 +29,7 @@ RobotArm::RobotArm(const char *modelPath, Shader shader) : shader(shader)
     pivotPoints[1] = {0.0f, 100.0f, 0.0f}; // Punkt obrotu ramienia 1
     pivotPoints[2] = {0.0f, 350.0f, 0.0f}; // Punkt obrotu ramienia 2
     pivotPoints[3] = {0.0f, 660.0f, 0.0f}; // Punkt obrotu ramienia 3
-    pivotPoints[4] = {0.0f, 660.0f, 0.0f}; // Punkt obrotu ramienia 4
+    pivotPoints[4] = {-58.0f, 708.0f, 0.0f}; // Punkt obrotu ramienia 4
     pivotPoints[5] = {-338.0f, 708.0f, 0.0f}; // Punkt obrotu ramienia 5
     pivotPoints[6] = {-426.0f, 708.0f, 0.0f}; // Punkt obrotu chwytaka
 
@@ -114,6 +114,7 @@ void RobotArm::Draw()
         }
     }
     EndShaderMode();
+    DrawTrajectory();
 }
 
 void RobotArm::DrawPivotPoints()
@@ -212,81 +213,127 @@ void RobotArm::DrawImGuiControls()
             ImGui::TreePop();
         }
 
-                if (ImGui::TreeNode("Inverse Kinematics")) {
-            ImGui::Checkbox("Use IK", &useIK);
-            
-            if (useIK) {
-                if (ImGui::DragFloat3("Target Position", (float*)&targetPosition, 0.01f)) {
-                    SolveIK();
-                }
-            }
-            
-            ImGui::Text("End Effector Position:");
-            Vector3 currentPos = CalculateEndEffectorPosition();
-            ImGui::Text("X: %.3f Y: %.3f Z: %.3f", currentPos.x, currentPos.y, currentPos.z);
-            
-            ImGui::TreePop();
+if (ImGui::TreeNode("Inverse Kinematics")) {
+    ImGui::Checkbox("Show Trajectory", &showTrajectory);
+    
+    if (ImGui::DragFloat3("Target Position", (float*)&targetPosition, 0.01f)) {
+        CalculateTrajectory();
+    }
+    
+    if (ImGui::Button(isAnimating ? "Stop Animation" : "Start Animation")) {
+        isAnimating = !isAnimating;
+        if (isAnimating) {
+            animationTime = 0.0f;
         }
+    }
+    
+    ImGui::Text("End Effector Position:");
+    Vector3 currentPos = CalculateEndEffectorPosition();
+    ImGui::Text("X: %.3f Y: %.3f Z: %.3f", currentPos.x, currentPos.y, currentPos.z);
+    
+    ImGui::TreePop();
+}
 
         ImGui::SliderFloat("Scale", &scale, 0.001f, 0.1f);
-        ImGui::ColorEdit4("Color", (float *)&color);
+            float col[4] = {
+        color.r/255.0f, 
+        color.g/255.0f, 
+        color.b/255.0f, 
+        color.a/255.0f
+    };
+    
+    if (ImGui::ColorEdit4("Robot Color", col)) {
+        color = {
+            (unsigned char)(col[0] * 255),
+            (unsigned char)(col[1] * 255),
+            (unsigned char)(col[2] * 255),
+            (unsigned char)(col[3] * 255)
+        };
+    }
     }
 }
 
 void RobotArm::SolveIK() {
     const float TOLERANCE = 0.001f;
     const int MAX_ITERATIONS = 10;
+    const float DAMPING = 0.1f; // Współczynnik tłumienia dla stabilności
     
     Vector3 basePos = Vector3Scale(pivotPoints[0], scale);
     Vector3 currentEndEffector = CalculateEndEffectorPosition();
     
+    // Ograniczenia kątowe dla każdego przegubu (min, max)
+    const float jointLimits[6][2] = {
+        {-180.0f, 180.0f}, // Baza
+        {-90.0f, 90.0f},   // Ramię 1
+        {-120.0f, 120.0f}, // Ramię 2
+        {-120.0f, 120.0f}, // Ramię 3
+        {-180.0f, 180.0f}, // Ramię 4
+        {-90.0f, 90.0f}    // Chwytak
+    };
+
+    // Sprawdź osiągalność celu
     float totalLength = 0.0f;
-    for (int i = 0; i <= model.meshCount; i++) {
-        totalLength += armLengths[i];
+    for(int i = 0; i < model.meshCount; i++) {
+        totalLength += armLengths[i] * scale;
     }
-    totalLength *= scale;
-    float targetDistance = Vector3Distance(basePos, targetPosition);
     
-    if (targetDistance > totalLength) {
-        // Cel poza zasięgiem - wyciągnij ramię w kierunku celu
+    float targetDistance = Vector3Distance(basePos, targetPosition);
+    if(targetDistance > totalLength) {
         Vector3 direction = Vector3Normalize(Vector3Subtract(targetPosition, basePos));
         targetPosition = Vector3Add(basePos, Vector3Scale(direction, totalLength));
     }
 
-    for (int iter = 0; iter < MAX_ITERATIONS; iter++) {
-        // Forward reaching
-        Vector3 joints[7];
-        joints[0] = basePos;
+    for(int iter = 0; iter < MAX_ITERATIONS; iter++) {
+        Vector3 prevEndEffector = CalculateEndEffectorPosition();
         
-        for (int i = 1; i < 6; i++) {
-            Vector3 dir = Vector3Normalize(Vector3Subtract(joints[i], joints[i-1]));
-            float len = Vector3Distance(pivotPoints[i], pivotPoints[i-1]) * scale;
-            joints[i] = Vector3Add(joints[i-1], Vector3Scale(dir, len));
-        }
-        
-        // Backward reaching
-        joints[6] = targetPosition;
-        for (int i = 5; i >= 0; i--) {
-            Vector3 dir = Vector3Normalize(Vector3Subtract(joints[i], joints[i+1]));
-            float len = Vector3Distance(pivotPoints[i+1], pivotPoints[i]) * scale;
-            joints[i] = Vector3Add(joints[i+1], Vector3Scale(dir, len));
-        }
-        
-        // Oblicz kąty dla przegubów
-        for (int i = 0; i < model.meshCount; i++) {
-            Vector3 v1 = Vector3Subtract(joints[i+1], joints[i]);
-            Vector3 v2 = Vector3Subtract(pivotPoints[i+1], pivotPoints[i]);
+        for(int i = 0; i < model.meshCount - 1; i++) {
+            Matrix currentTransform = GetHierarchicalTransform(i, meshRotations, pivotPoints);
+            Vector3 jointPos = Vector3Transform(pivotPoints[i], currentTransform);
+            jointPos = Vector3Scale(jointPos, scale);
             
-            float angle = atan2(v1.y, v1.x) - atan2(v2.y, v2.x);
-            meshRotations[i].angle = angle * RAD2DEG;
+            Vector3 currentEndEffector = CalculateEndEffectorPosition();
             
-            // Ogranicz kąty obrotu
-            meshRotations[i].angle = ClampAngle(meshRotations[i].angle, -180.0f, 180.0f);
+            // Wektory do obliczeń
+            Vector3 toEndEffector = Vector3Normalize(Vector3Subtract(currentEndEffector, jointPos));
+            Vector3 toTarget = Vector3Normalize(Vector3Subtract(targetPosition, jointPos));
+            
+            // Oś obrotu w przestrzeni przegubu
+            Vector3 jointAxis = meshRotations[i].axis;
+            Vector3 globalAxis = TransformAxis(jointAxis, currentTransform);
+            
+            // Oblicz kąt obrotu
+            float dotProduct = Vector3DotProduct(toEndEffector, toTarget);
+            dotProduct = Clamp(dotProduct, -1.0f, 1.0f);
+            float rotationAngle = acosf(dotProduct) * RAD2DEG;
+            
+            // Określ kierunek obrotu
+            Vector3 cross = Vector3CrossProduct(toEndEffector, toTarget);
+            float direction = Vector3DotProduct(cross, globalAxis);
+            
+            // Zastosuj tłumienie do kąta
+            rotationAngle *= DAMPING;
+            
+            if(fabs(direction) > 0.001f) {
+                float newAngle = meshRotations[i].angle;
+                if(direction > 0) {
+                    newAngle += rotationAngle;
+                } else {
+                    newAngle -= rotationAngle;
+                }
+                
+                // Ogranicz kąt do dozwolonego zakresu
+                newAngle = ClampAngle(newAngle, jointLimits[i][0], jointLimits[i][1]);
+                meshRotations[i].angle = newAngle;
+            }
         }
         
-        // Sprawdź czy osiągnięto cel
-        currentEndEffector = CalculateEndEffectorPosition();
-        if (Vector3Distance(currentEndEffector, targetPosition) < TOLERANCE) {
+        // Sprawdź postęp
+        Vector3 newEndEffector = CalculateEndEffectorPosition();
+        float improvement = Vector3Distance(prevEndEffector, targetPosition) - 
+                          Vector3Distance(newEndEffector, targetPosition);
+        
+        if(improvement < TOLERANCE || 
+           Vector3Distance(newEndEffector, targetPosition) < TOLERANCE) {
             break;
         }
     }
@@ -302,4 +349,71 @@ Vector3 RobotArm::CalculateEndEffectorPosition() {
     Matrix transform = GetHierarchicalTransform(model.meshCount - 1, meshRotations, pivotPoints);
     Vector3 endEffector = Vector3Transform(pivotPoints[model.meshCount], transform);
     return Vector3Scale(endEffector, scale);
+}
+
+void RobotArm::CalculateTrajectory() {
+    trajectoryPoints.clear();
+    
+    Vector3 startPos = CalculateEndEffectorPosition();
+    Vector3 endPos = targetPosition;
+    
+    // Punkt kontrolny dla paraboli (na środku i powyżej linii prostej)
+    Vector3 midPoint = {
+        (startPos.x + endPos.x) * 0.5f,
+        ((startPos.y + endPos.y) * 0.5f) + 2.0f, // Punkt kontrolny uniesiony do góry
+        (startPos.z + endPos.z) * 0.5f
+    };
+    
+    const int numPoints = 50;
+    for(int i = 0; i <= numPoints; i++) {
+        float t = i / (float)numPoints;
+        
+        // Interpolacja kwadratowa (parabola)
+        Vector3 point = {
+            (1-t)*(1-t)*startPos.x + 2*(1-t)*t*midPoint.x + t*t*endPos.x,
+            (1-t)*(1-t)*startPos.y + 2*(1-t)*t*midPoint.y + t*t*endPos.y,
+            (1-t)*(1-t)*startPos.z + 2*(1-t)*t*midPoint.z + t*t*endPos.z
+        };
+        
+        trajectoryPoints.push_back(point);
+    }
+}
+
+void RobotArm::DrawTrajectory() {
+    if (!showTrajectory || trajectoryPoints.empty()) return;
+
+    // Draw line segments between points
+    for(size_t i = 0; i < trajectoryPoints.size() - 1; i++) {
+        DrawLine3D(trajectoryPoints[i], trajectoryPoints[i + 1], YELLOW);
+    }
+    
+    // Draw spheres at start and end points
+    DrawSphere(trajectoryPoints.front(), 0.1f, BLUE);
+    DrawSphere(trajectoryPoints.back(), 0.1f, RED);
+}
+
+void RobotArm::Update() {
+    if (isAnimating && !trajectoryPoints.empty()) {
+        // Aktualizuj czas animacji (GetFrameTime() daje czas między klatkami)
+        animationTime += GetFrameTime();
+        
+        // Normalizuj czas do zakresu 0-1
+        float t = animationTime / ANIMATION_DURATION;
+        
+        // Zakończ animację gdy osiągnie koniec
+        if (t >= 1.0f) {
+            isAnimating = false;
+            t = 1.0f;
+        }
+        
+        // Znajdź indeks punktu w trajektorii
+        int index = (int)(t * (trajectoryPoints.size() - 1));
+        index = Clamp(index, 0, trajectoryPoints.size() - 2);
+        
+        // Ustaw cel IK na aktualny punkt trajektorii
+        targetPosition = trajectoryPoints[index];
+        
+        // Rozwiąż IK dla nowej pozycji
+        SolveIK();
+    }
 }
