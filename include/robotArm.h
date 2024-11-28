@@ -12,6 +12,12 @@ struct ArmRotation
     Vector3 axis;
 };
 
+enum class InterpolationType {
+    LINEAR,
+    PARABOLIC,
+    SPLINE
+};
+
 class RobotArm
 {
 private:
@@ -37,6 +43,8 @@ private:
     void SolveIK();
     float ClampAngle(float angle, float min, float max);
     Vector3 CalculateEndEffectorPosition();
+        InterpolationType interpolationType = InterpolationType::LINEAR;
+    std::vector<Vector3> controlPoints;  // Dla interpolacji spline
 
 public:
     RobotArm(const char *modelPath, Shader shader);

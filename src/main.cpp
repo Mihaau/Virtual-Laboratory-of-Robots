@@ -254,7 +254,7 @@ int main()
         "Trilinear"
     };
     
-    static int currentFilter = 2; // Domyślnie Trilinear
+    static int currentFilter = 1; // Domyślnie bilinear
     
     if (ImGui::Combo("Filtr", &currentFilter, filters, IM_ARRAYSIZE(filters)))
     {

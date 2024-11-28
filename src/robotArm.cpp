@@ -6,7 +6,7 @@ RobotArm::RobotArm(const char *modelPath, Shader shader) : shader(shader)
     meshVisibility = new bool[model.meshCount];
     meshRotations = new ArmRotation[model.meshCount];
     scale = 0.01f;
-    color = RED;
+    color = WHITE;
     showPivotPoints = true;
 
     for (int i = 0; i < model.meshCount; i++)
@@ -216,8 +216,28 @@ void RobotArm::DrawImGuiControls()
 if (ImGui::TreeNode("Inverse Kinematics")) {
     ImGui::Checkbox("Show Trajectory", &showTrajectory);
     
+    const char* interpolationTypes[] = { "Linear", "Parabolic", "Spline" };
+    int currentType = static_cast<int>(interpolationType);
+    if (ImGui::Combo("Interpolation Type", &currentType, interpolationTypes, 3)) {
+        interpolationType = static_cast<InterpolationType>(currentType);
+        CalculateTrajectory();
+    }
+
     if (ImGui::DragFloat3("Target Position", (float*)&targetPosition, 0.01f)) {
         CalculateTrajectory();
+    }
+
+        if (interpolationType == InterpolationType::SPLINE && !controlPoints.empty()) {
+        if (ImGui::TreeNode("Control Points")) {
+            for (int i = 0; i < controlPoints.size(); i++) {
+                char label[32];
+                sprintf(label, "Point %d", i);
+                if (ImGui::DragFloat3(label, (float*)&controlPoints[i], 0.01f)) {
+                    CalculateTrajectory();
+                }
+            }
+            ImGui::TreePop();
+        }
     }
     
     if (ImGui::Button(isAnimating ? "Stop Animation" : "Start Animation")) {
@@ -356,26 +376,95 @@ void RobotArm::CalculateTrajectory() {
     
     Vector3 startPos = CalculateEndEffectorPosition();
     Vector3 endPos = targetPosition;
-    
-    // Punkt kontrolny dla paraboli (na środku i powyżej linii prostej)
-    Vector3 midPoint = {
-        (startPos.x + endPos.x) * 0.5f,
-        ((startPos.y + endPos.y) * 0.5f) + 2.0f, // Punkt kontrolny uniesiony do góry
-        (startPos.z + endPos.z) * 0.5f
-    };
-    
+    float pathLength = Vector3Distance(startPos, endPos);
     const int numPoints = 50;
-    for(int i = 0; i <= numPoints; i++) {
-        float t = i / (float)numPoints;
-        
-        // Interpolacja kwadratowa (parabola)
-        Vector3 point = {
-            (1-t)*(1-t)*startPos.x + 2*(1-t)*t*midPoint.x + t*t*endPos.x,
-            (1-t)*(1-t)*startPos.y + 2*(1-t)*t*midPoint.y + t*t*endPos.y,
-            (1-t)*(1-t)*startPos.z + 2*(1-t)*t*midPoint.z + t*t*endPos.z
-        };
-        
-        trajectoryPoints.push_back(point);
+
+    switch(interpolationType) {
+        case InterpolationType::LINEAR:
+            // Interpolacja liniowa
+            for(int i = 0; i <= numPoints; i++) {
+                float t = i / (float)numPoints;
+                Vector3 point = {
+                    startPos.x + (endPos.x - startPos.x) * t,
+                    startPos.y + (endPos.y - startPos.y) * t,
+                    startPos.z + (endPos.z - startPos.z) * t
+                };
+                trajectoryPoints.push_back(point);
+            }
+            break;
+
+        case InterpolationType::PARABOLIC: {
+            // Istniejąca implementacja paraboliczna
+            float pathLength = Vector3Distance(startPos, endPos);
+            float heightOffset = pathLength * 0.5f;
+            float maxHeight = 0;
+            for(int i = 0; i <= model.meshCount; i++) {
+                Vector3 point = Vector3Transform(pivotPoints[i], 
+                    GetHierarchicalTransform(i-1, meshRotations, pivotPoints));
+                maxHeight = fmaxf(maxHeight, point.y);
+            }
+            
+            Vector3 midPoint = {
+                (startPos.x + endPos.x) * 0.5f,
+                fmaxf(maxHeight + heightOffset, ((startPos.y + endPos.y) * 0.5f + heightOffset)),
+                (startPos.z + endPos.z) * 0.5f
+            };
+            
+            for(int i = 0; i <= numPoints; i++) {
+                float t = i / (float)numPoints;
+                Vector3 point = {
+                    (1-t)*(1-t)*startPos.x + 2*(1-t)*t*midPoint.x + t*t*endPos.x,
+                    (1-t)*(1-t)*startPos.y + 2*(1-t)*t*midPoint.y + t*t*endPos.y,
+                    (1-t)*(1-t)*startPos.z + 2*(1-t)*t*midPoint.z + t*t*endPos.z
+                };
+                trajectoryPoints.push_back(point);
+            }
+            break;
+        }
+
+        case InterpolationType::SPLINE: {
+            // Cubic spline interpolation
+            if(controlPoints.empty()) {
+                // Poprawiona inicjalizacja punktów kontrolnych
+                controlPoints.clear();
+                controlPoints.push_back(startPos);
+                controlPoints.push_back(Vector3{
+                    (startPos.x + endPos.x)*0.25f,
+                    startPos.y + pathLength*0.3f,
+                    (startPos.z + endPos.z)*0.25f
+                });
+                controlPoints.push_back(Vector3{
+                    (startPos.x + endPos.x)*0.75f,
+                    startPos.y + pathLength*0.3f,
+                    (startPos.z + endPos.z)*0.75f
+                });
+                controlPoints.push_back(endPos);
+            }
+            
+            for(int i = 0; i <= numPoints; i++) {
+                float t = i / (float)numPoints;
+                // Cubic Bezier
+                float u = 1.0f - t;
+                Vector3 point = {
+                    u*u*u * controlPoints[0].x + 
+                    3*u*u*t * controlPoints[1].x + 
+                    3*u*t*t * controlPoints[2].x + 
+                    t*t*t * controlPoints[3].x,
+                    
+                    u*u*u * controlPoints[0].y + 
+                    3*u*u*t * controlPoints[1].y + 
+                    3*u*t*t * controlPoints[2].y + 
+                    t*t*t * controlPoints[3].y,
+                    
+                    u*u*u * controlPoints[0].z + 
+                    3*u*u*t * controlPoints[1].z + 
+                    3*u*t*t * controlPoints[2].z + 
+                    t*t*t * controlPoints[3].z
+                };
+                trajectoryPoints.push_back(point);
+            }
+            break;
+        }
     }
 }
 
