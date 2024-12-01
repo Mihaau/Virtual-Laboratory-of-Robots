@@ -293,6 +293,41 @@ if (ImGui::TreeNode("Inverse Kinematics")) {
     }
 }
 
+bool RobotArm::IsPositionReachable(const Vector3& position) {
+    // Oblicz całkowitą długość ramienia
+    float totalLength = 0.0f;
+    for (int i = 0; i <= model.meshCount; i++) {
+        totalLength += armLengths[i];
+    }
+    totalLength *= scale;
+
+    // Oblicz odległość od bazy do pozycji docelowej
+    Vector3 basePos = Vector3Scale(pivotPoints[0], scale);
+    float targetDistance = Vector3Distance(basePos, position);
+
+    // Sprawdź czy cel jest w zasięgu ramienia
+    if (targetDistance > totalLength) {
+        return false;
+    }
+
+    // Sprawdź ograniczenia kątowe (uproszczone)
+    const float jointLimits[6][2] = {
+        {-180.0f, 180.0f}, // Baza
+        {-90.0f, 90.0f},   // Ramię 1
+        {-120.0f, 120.0f}, // Ramię 2
+        {-120.0f, 120.0f}, // Ramię 3
+        {-180.0f, 180.0f}, // Obrót chwytaka
+        {-90.0f, 90.0f}    // Chwytak
+    };
+
+    // Sprawdź czy pozycja jest powyżej podłoża
+    if (position.y < 0) {
+        return false;
+    }
+
+    return true;
+}
+
 void RobotArm::SolveIK() {
     const float TOLERANCE = 0.001f;
     const int MAX_ITERATIONS = 10;
