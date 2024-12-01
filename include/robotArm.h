@@ -6,11 +6,18 @@
 #include "string"
 #include "logWindow.h"
 #include "lua.hpp"
+#include "vector"
 
 struct ArmRotation
 {
     float angle;
     Vector3 axis;
+};
+
+enum class InterpolationType {
+    LINEAR,
+    PARABOLIC,
+    SPLINE
 };
 
 class RobotArm
@@ -32,10 +39,17 @@ private:
     bool isTargetReachable;
     Vector3 lastValidTarget;
     bool IsPositionReachable(const Vector3& position);
+    std::vector<Vector3> trajectoryPoints;
+    bool showTrajectory = false;
+        bool isAnimating = false;
+    float animationTime = 0.0f;
+    const float ANIMATION_DURATION = 2.0f;
 
     void SolveIK();
     float ClampAngle(float angle, float min, float max);
     Vector3 CalculateEndEffectorPosition();
+        InterpolationType interpolationType = InterpolationType::LINEAR;
+    std::vector<Vector3> controlPoints;  // Dla interpolacji spline
 
         bool stepMode = false;
     int currentLine = 0;
@@ -46,6 +60,7 @@ public:
     ~RobotArm();
 
     void Draw();
+    void Update();
     void UpdateRotation(int meshIndex, float angle);
     void SetMeshVisibility(int meshIndex, bool visible);
     void SetScale(float newScale) { scale = newScale; }
@@ -58,6 +73,8 @@ public:
     void DrawPivotPoints();
     Vector3 *GetPivotPoints() { return pivotPoints; }
     void SetPivotPoint(int index, Vector3 position);
+        void CalculateTrajectory();
+    void DrawTrajectory();
 
     void DrawImGuiControls();
 

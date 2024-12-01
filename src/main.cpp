@@ -70,6 +70,10 @@ int main()
     InitWindow(screenWidth, screenHeight, "Virtual Laboratory of Robots");
     SetWindowMinSize(1280, 720);
     Image icon = LoadImage("assets/images/icon.png");
+    if (icon.format != PIXELFORMAT_UNCOMPRESSED_R8G8B8A8)
+    {
+        ImageFormat(&icon, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+    }
     SetWindowIcon(icon);
     UnloadImage(icon);
     RenderTexture2D target = LoadRenderTexture(1920, 1080);
@@ -165,7 +169,7 @@ int main()
 
         lightController.Update();
         BeginMode3D(cameraController.GetCamera());
-
+        robotArm.Update();
         robotArm.Draw();
         for (auto *obj : sceneObjects)
         {
@@ -250,7 +254,7 @@ int main()
         "Trilinear"
     };
     
-    static int currentFilter = 2; // Domyślnie Trilinear
+    static int currentFilter = 1; // Domyślnie bilinear
     
     if (ImGui::Combo("Filtr", &currentFilter, filters, IM_ARRAYSIZE(filters)))
     {
@@ -309,7 +313,7 @@ int main()
         EndDrawing();
     }
     for (auto *obj : sceneObjects)
-    {
+    {   
         delete obj;
     }
     sceneObjects.clear();
