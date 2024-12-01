@@ -64,8 +64,8 @@ void DrawSplashScreen(bool &showSplashScreen, Texture2D &logo)
 
 int main()
 {
-    const int screenWidth = 1920;
-    const int screenHeight = 1080;
+    const int screenWidth = 1280;
+    const int screenHeight = 720;
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT);
     InitWindow(screenWidth, screenHeight, "Virtual Laboratory of Robots");
     SetWindowMinSize(1280, 720);

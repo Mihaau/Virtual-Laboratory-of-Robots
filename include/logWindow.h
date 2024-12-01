@@ -17,6 +17,10 @@ struct LogMessage {
 
 class LogWindow {
 public:
+    static LogWindow& GetInstance() {
+        static LogWindow instance;
+        return instance;
+    }
     LogWindow();
     void Draw(const char* title, const ImVec2& position, const ImVec2& size);
     void AddLog(const char* message, LogLevel level = LogLevel::Info);

@@ -108,3 +108,11 @@ void CodeEditor::SetContent(const std::string& text) {
     buffer[bufferSize - 1] = '\0';
     content = text;
 }
+
+void CodeEditor::SetCurrentLine(int line) {
+    currentLine = line;
+}
+
+int CodeEditor::GetCurrentLine() const {
+    return currentLine;
+}

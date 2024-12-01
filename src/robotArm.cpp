@@ -8,6 +8,9 @@ RobotArm::RobotArm(const char *modelPath, Shader shader) : shader(shader)
     scale = 0.01f;
     color = RED;
     showPivotPoints = true;
+    isTargetReachable = true;
+    lastValidTarget = Vector3Zero();
+    targetPosition = Vector3Zero();
 
     for (int i = 0; i < model.meshCount; i++)
     {
@@ -25,11 +28,11 @@ RobotArm::RobotArm(const char *modelPath, Shader shader) : shader(shader)
 
     pivotPoints = new Vector3[model.meshCount + 1];
 
-    pivotPoints[0] = {0.0f, 0.0f, 0.0f};   // Baza
-    pivotPoints[1] = {0.0f, 100.0f, 0.0f}; // Punkt obrotu ramienia 1
-    pivotPoints[2] = {0.0f, 350.0f, 0.0f}; // Punkt obrotu ramienia 2
-    pivotPoints[3] = {0.0f, 660.0f, 0.0f}; // Punkt obrotu ramienia 3
-    pivotPoints[4] = {0.0f, 660.0f, 0.0f}; // Punkt obrotu ramienia 4
+    pivotPoints[0] = {0.0f, 0.0f, 0.0f};      // Baza
+    pivotPoints[1] = {0.0f, 100.0f, 0.0f};    // Punkt obrotu ramienia 1
+    pivotPoints[2] = {0.0f, 350.0f, 0.0f};    // Punkt obrotu ramienia 2
+    pivotPoints[3] = {0.0f, 660.0f, 0.0f};    // Punkt obrotu ramienia 3
+    pivotPoints[4] = {0.0f, 660.0f, 0.0f};    // Punkt obrotu ramienia 4
     pivotPoints[5] = {-338.0f, 708.0f, 0.0f}; // Punkt obrotu ramienia 5
     pivotPoints[6] = {-426.0f, 708.0f, 0.0f}; // Punkt obrotu chwytaka
 
@@ -91,7 +94,6 @@ Matrix GetHierarchicalTransform(int meshIndex, ArmRotation *rotations, Vector3 *
     return transform;
 }
 
-
 void RobotArm::Draw()
 {
     BeginShaderMode(shader);
@@ -102,7 +104,7 @@ void RobotArm::Draw()
     {
         if (meshVisibility[i])
         {
-            
+
             // Get hierarchical transformation including pivots
             Matrix hierarchicalTransform = GetHierarchicalTransform(i, meshRotations, pivotPoints);
 
@@ -164,6 +166,7 @@ void RobotArm::SetMeshVisibility(int meshIndex, bool visible)
 
 void RobotArm::DrawImGuiControls()
 {
+    static LogWindow& logWindow = LogWindow::GetInstance();
     if (ImGui::CollapsingHeader("Robot Arm Controls"))
     {
         if (ImGui::TreeNode("Mesh Visibility"))
@@ -212,19 +215,41 @@ void RobotArm::DrawImGuiControls()
             ImGui::TreePop();
         }
 
-                if (ImGui::TreeNode("Inverse Kinematics")) {
+        if (ImGui::TreeNode("Inverse Kinematics"))
+        {
             ImGui::Checkbox("Use IK", &useIK);
-            
-            if (useIK) {
-                if (ImGui::DragFloat3("Target Position", (float*)&targetPosition, 0.01f)) {
-                    SolveIK();
+
+            if (useIK)
+            {
+                bool isReachable = IsPositionReachable(targetPosition);
+
+                if (!isReachable)
+                {
+                    logWindow.AddLog("Target position unreachable!", LogLevel::Warning);
+
+                    // Używaj ostatniej prawidłowej pozycji
+                    ImGui::DragFloat3("Target Position", (float *)&lastValidTarget, 0.01f, 0.0f, 0.0f, "%.3f (Locked)");
+                    targetPosition = lastValidTarget;
                 }
+                else
+                {
+                    Vector3 tempTarget = targetPosition;
+                    if (ImGui::DragFloat3("Target Position", (float *)&tempTarget, 0.01f))
+                    {
+                        if (IsPositionReachable(tempTarget))
+                        {
+                            targetPosition = tempTarget;
+                            lastValidTarget = targetPosition;
+                            SolveIK();
+                        }
+                    }
+                }
+
+                ImGui::Text("End Effector Position:");
+                Vector3 currentPos = CalculateEndEffectorPosition();
+                ImGui::Text("X: %.3f Y: %.3f Z: %.3f", currentPos.x, currentPos.y, currentPos.z);
             }
-            
-            ImGui::Text("End Effector Position:");
-            Vector3 currentPos = CalculateEndEffectorPosition();
-            ImGui::Text("X: %.3f Y: %.3f Z: %.3f", currentPos.x, currentPos.y, currentPos.z);
-            
+
             ImGui::TreePop();
         }
 
@@ -233,73 +258,173 @@ void RobotArm::DrawImGuiControls()
     }
 }
 
-void RobotArm::SolveIK() {
-    const float TOLERANCE = 0.001f;
-    const int MAX_ITERATIONS = 10;
-    
+void RobotArm::SolveIK()
+{
+    const float TOLERANCE = 0.01f;
+    const int MAX_ITERATIONS = 30;
+
     Vector3 basePos = Vector3Scale(pivotPoints[0], scale);
     Vector3 currentEndEffector = CalculateEndEffectorPosition();
-    
+
     float totalLength = 0.0f;
-    for (int i = 0; i <= model.meshCount; i++) {
+    for (int i = 0; i <= model.meshCount; i++)
+    {
         totalLength += armLengths[i];
     }
     totalLength *= scale;
     float targetDistance = Vector3Distance(basePos, targetPosition);
-    
-    if (targetDistance > totalLength) {
+
+    if (targetDistance > totalLength)
+    {
         // Cel poza zasięgiem - wyciągnij ramię w kierunku celu
         Vector3 direction = Vector3Normalize(Vector3Subtract(targetPosition, basePos));
         targetPosition = Vector3Add(basePos, Vector3Scale(direction, totalLength));
     }
 
-    for (int iter = 0; iter < MAX_ITERATIONS; iter++) {
+    for (int iter = 0; iter < MAX_ITERATIONS; iter++)
+    {
         // Forward reaching
         Vector3 joints[7];
         joints[0] = basePos;
-        
-        for (int i = 1; i < 6; i++) {
-            Vector3 dir = Vector3Normalize(Vector3Subtract(joints[i], joints[i-1]));
-            float len = Vector3Distance(pivotPoints[i], pivotPoints[i-1]) * scale;
-            joints[i] = Vector3Add(joints[i-1], Vector3Scale(dir, len));
+
+        for (int i = 1; i < 6; i++)
+        {
+            Vector3 dir = Vector3Normalize(Vector3Subtract(joints[i], joints[i - 1]));
+            float len = Vector3Distance(pivotPoints[i], pivotPoints[i - 1]) * scale;
+            joints[i] = Vector3Add(joints[i - 1], Vector3Scale(dir, len));
         }
-        
+
         // Backward reaching
         joints[6] = targetPosition;
-        for (int i = 5; i >= 0; i--) {
-            Vector3 dir = Vector3Normalize(Vector3Subtract(joints[i], joints[i+1]));
-            float len = Vector3Distance(pivotPoints[i+1], pivotPoints[i]) * scale;
-            joints[i] = Vector3Add(joints[i+1], Vector3Scale(dir, len));
+        for (int i = 5; i >= 0; i--)
+        {
+            Vector3 dir = Vector3Normalize(Vector3Subtract(joints[i], joints[i + 1]));
+            float len = Vector3Distance(pivotPoints[i + 1], pivotPoints[i]) * scale;
+            joints[i] = Vector3Add(joints[i + 1], Vector3Scale(dir, len));
         }
-        
+
         // Oblicz kąty dla przegubów
-        for (int i = 0; i < model.meshCount; i++) {
-            Vector3 v1 = Vector3Subtract(joints[i+1], joints[i]);
-            Vector3 v2 = Vector3Subtract(pivotPoints[i+1], pivotPoints[i]);
-            
+        for (int i = 0; i < model.meshCount; i++)
+        {
+            Vector3 v1 = Vector3Subtract(joints[i + 1], joints[i]);
+            Vector3 v2 = Vector3Subtract(pivotPoints[i + 1], pivotPoints[i]);
+
             float angle = atan2(v1.y, v1.x) - atan2(v2.y, v2.x);
             meshRotations[i].angle = angle * RAD2DEG;
-            
+
             // Ogranicz kąty obrotu
             meshRotations[i].angle = ClampAngle(meshRotations[i].angle, -180.0f, 180.0f);
         }
-        
+
         // Sprawdź czy osiągnięto cel
         currentEndEffector = CalculateEndEffectorPosition();
-        if (Vector3Distance(currentEndEffector, targetPosition) < TOLERANCE) {
+        if (Vector3Distance(currentEndEffector, targetPosition) < TOLERANCE)
+        {
             break;
         }
     }
 }
 
-float RobotArm::ClampAngle(float angle, float min, float max) {
-    while (angle > max) angle -= 360.0f;
-    while (angle < min) angle += 360.0f;
+float RobotArm::ClampAngle(float angle, float min, float max)
+{
+    while (angle > max)
+        angle -= 360.0f;
+    while (angle < min)
+        angle += 360.0f;
     return fmaxf(min, fminf(max, angle));
 }
 
-Vector3 RobotArm::CalculateEndEffectorPosition() {
+Vector3 RobotArm::CalculateEndEffectorPosition()
+{
     Matrix transform = GetHierarchicalTransform(model.meshCount - 1, meshRotations, pivotPoints);
     Vector3 endEffector = Vector3Transform(pivotPoints[model.meshCount], transform);
     return Vector3Scale(endEffector, scale);
+}
+
+bool RobotArm::IsPositionReachable(const Vector3 &position)
+{
+    Vector3 basePos = Vector3Scale(pivotPoints[0], scale);
+    float targetDistance = Vector3Distance(basePos, position);
+
+    float totalLength = 0.0f;
+    for (int i = 0; i < model.meshCount; i++)
+    {
+        totalLength += armLengths[i];
+    }
+    totalLength *= scale;
+
+    return targetDistance <= totalLength;
+}
+
+void RobotArm::MoveToPosition(const Vector3& position) {
+    targetPosition = position;
+    SolveIK();
+}
+
+void RobotArm::RotateJoint(int jointIndex, float angle) {
+    if (jointIndex < model.meshCount) {
+        meshRotations[jointIndex].angle = angle;
+    }
+}
+
+void RobotArm::Step() {
+    if (stepMode) {
+        int nresults = 0;
+        lua_State* from = nullptr;
+        int status = lua_resume(L, from, 0, &nresults);
+        
+        // Obsługa statusu
+        if (status != LUA_OK && status != LUA_YIELD) {
+            const char* error = lua_tostring(L, -1);
+            // TODO: Dodać obsługę błędu
+            lua_pop(L, 1);
+        }
+    }
+}
+
+void RobotArm::SetStepMode(bool enabled) {
+    stepMode = enabled;
+}
+
+int RobotArm::GetCurrentLine() const {
+    return currentLine;
+}
+
+void RobotArm::ExecuteLuaScript(const std::string& script) {
+    L = luaL_newstate();
+    luaL_openlibs(L);
+
+    // Funkcja pomocnicza do rejestracji funkcji z RobotArm
+    auto registerFunction = [this](const char* name, lua_CFunction func) {
+        lua_pushlightuserdata(L, this);
+        lua_pushcclosure(L, func, 1);
+        lua_setglobal(L, name);
+    };
+
+    // Rejestracja moveToPosition
+    registerFunction("moveToPosition", [](lua_State* L) -> int {
+        auto arm = static_cast<RobotArm*>(lua_touserdata(L, lua_upvalueindex(1)));
+        Vector3 position = {
+            (float)lua_tonumber(L, 1),
+            (float)lua_tonumber(L, 2),
+            (float)lua_tonumber(L, 3)
+        };
+        arm->MoveToPosition(position);
+        return 0;
+    });
+
+    // Rejestracja rotateJoint
+    registerFunction("rotateJoint", [](lua_State* L) -> int {
+        auto arm = static_cast<RobotArm*>(lua_touserdata(L, lua_upvalueindex(1)));
+        int jointIndex = (int)lua_tointeger(L, 1);
+        float angle = (float)lua_tonumber(L, 2);
+        arm->RotateJoint(jointIndex, angle);
+        return 0;
+    });
+
+    if (luaL_loadstring(L, script.c_str()) || lua_pcall(L, 0, 0, 0)) {
+        const char* error = lua_tostring(L, -1);
+        // Obsługa błędu
+        lua_pop(L, 1);
+    }
 }

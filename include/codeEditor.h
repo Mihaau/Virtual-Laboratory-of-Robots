@@ -11,6 +11,7 @@ private:
     bool showLineNumbers;
     std::string filename;
     ImGuiInputTextFlags flags;
+    int currentLine = 0;
     
 public:
     CodeEditor(size_t initialBufferSize = 8192);
@@ -21,4 +22,7 @@ public:
     void SaveToFile(const std::string& path);
     const std::string& GetContent() const;
     void SetContent(const std::string& text);
+
+        void SetCurrentLine(int line);
+    int GetCurrentLine() const;
 };

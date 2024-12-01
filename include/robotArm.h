@@ -4,6 +4,8 @@
 #include "rlImGui.h"
 #include "imgui.h"
 #include "string"
+#include "logWindow.h"
+#include "lua.hpp"
 
 struct ArmRotation
 {
@@ -27,10 +29,17 @@ private:
     Vector3 targetPosition;
     bool useIK;
     bool showPivotPoints;
+    bool isTargetReachable;
+    Vector3 lastValidTarget;
+    bool IsPositionReachable(const Vector3& position);
 
     void SolveIK();
     float ClampAngle(float angle, float min, float max);
     Vector3 CalculateEndEffectorPosition();
+
+        bool stepMode = false;
+    int currentLine = 0;
+    lua_State* L;
 
 public:
     RobotArm(const char *modelPath, Shader shader);
@@ -51,4 +60,11 @@ public:
     void SetPivotPoint(int index, Vector3 position);
 
     void DrawImGuiControls();
+
+        void MoveToPosition(const Vector3& position);
+    void RotateJoint(int jointIndex, float angle);
+    void Step();
+    void SetStepMode(bool enabled);
+    int GetCurrentLine() const;
+    void ExecuteLuaScript(const std::string& script);
 };
