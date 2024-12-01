@@ -5,11 +5,11 @@ ToolBar::ToolBar(float screenWidth) : screenWidth(screenWidth), buttonSize(32.0f
     buttonDim = ImVec2(120, buttonSize);
     
     buttons = {
-        {ICON_FA_PLAY, "Start", "Uruchom program", [](){}},
-        {ICON_FA_STOP, "Stop", "Zatrzymaj program", [](){}},
-        {ICON_FA_ARROW_TREND_UP, "Debug", "Tryb debugowania", [](){}},
-        {ICON_FA_FILE_CIRCLE_XMARK, "Reset", "Zresetuj program", [](){}},
-        {ICON_FA_SPAGHETTI_MONSTER_FLYING, "Config", "Konfiguracja programu", [](){}}
+        {ICON_FA_PLAY, " Start", "Uruchom program", [](){}},
+        {ICON_FA_STOP, " Stop", "Zatrzymaj program", [](){}},
+        {ICON_FA_BUG, " Debug", "Tryb debugowania", [](){}},
+        {ICON_FA_ROTATE_RIGHT, " Reset", "Zresetuj program", [](){}},
+        {ICON_FA_SPAGHETTI_MONSTER_FLYING, " Config", "Konfiguracja programu", [](){}}
     };
 }
 
