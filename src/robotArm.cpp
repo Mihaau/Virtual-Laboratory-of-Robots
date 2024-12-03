@@ -62,39 +62,6 @@ RobotArm::~RobotArm()
     delete kinematics;
 }
 
-Vector3 TransformAxis(Vector3 axis, Matrix transform)
-{
-    Vector3 result;
-    result.x = axis.x * transform.m0 + axis.y * transform.m4 + axis.z * transform.m8;
-    result.y = axis.x * transform.m1 + axis.y * transform.m5 + axis.z * transform.m9;
-    result.z = axis.x * transform.m2 + axis.y * transform.m6 + axis.z * transform.m10;
-    return Vector3Normalize(result);
-}
-
-Matrix GetHierarchicalTransform(int meshIndex, ArmRotation *rotations, Vector3 *pivotPoints)
-{
-    if (meshIndex < 0)
-        return MatrixIdentity();
-
-    // Najpierw pobierz transformację rodzica
-    Matrix transform = GetHierarchicalTransform(meshIndex - 1, rotations, pivotPoints);
-
-    // Przesuń do punktu obrotu (w przestrzeni globalnej)
-    Vector3 globalPivotPos = Vector3Transform(pivotPoints[meshIndex], transform);
-    transform = MatrixMultiply(transform, MatrixTranslate(-globalPivotPos.x, -globalPivotPos.y, -globalPivotPos.z));
-
-    // Oblicz nową oś obrotu na podstawie poprzednich transformacji
-    Vector3 newAxis = TransformAxis(rotations[meshIndex].axis, transform);
-
-    // Wykonaj rotację
-    transform = MatrixMultiply(transform, MatrixRotate(newAxis, rotations[meshIndex].angle * DEG2RAD));
-
-    // Przesuń z powrotem
-    transform = MatrixMultiply(transform, MatrixTranslate(globalPivotPos.x, globalPivotPos.y, globalPivotPos.z));
-
-    return transform;
-}
-
 void RobotArm::Draw()
 {
     BeginShaderMode(shader);
@@ -105,14 +72,9 @@ void RobotArm::Draw()
     {
         if (meshVisibility[i])
         {
-
-            // Get hierarchical transformation including pivots
-            Matrix hierarchicalTransform = GetHierarchicalTransform(i, meshRotations, pivotPoints);
-
-            // Apply scale
+            Matrix hierarchicalTransform = RobotKinematics::GetHierarchicalTransform(i, meshRotations, pivotPoints);
             Matrix scaleMatrix = MatrixScale(scale, scale, scale);
             Matrix finalTransform = MatrixMultiply(hierarchicalTransform, scaleMatrix);
-
             DrawMesh(model.meshes[i], defaultMaterial, finalTransform);
         }
     }
@@ -128,7 +90,7 @@ void RobotArm::DrawPivotPoints()
     for (int i = 0; i <= model.meshCount; i++)
     {
         // Get hierarchical transform up to parent
-        Matrix parentTransform = (i == 0) ? MatrixIdentity() : GetHierarchicalTransform(i - 1, meshRotations, pivotPoints);
+        Matrix parentTransform = (i == 0) ? MatrixIdentity() : RobotKinematics::GetHierarchicalTransform(i - 1, meshRotations, pivotPoints);
 
         // Transform pivot point by parent transforms first
         Vector3 globalPivotPos = Vector3Transform(pivotPoints[i], parentTransform);

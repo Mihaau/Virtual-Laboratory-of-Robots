@@ -9,17 +9,19 @@ struct ArmRotation
     Vector3 axis;
 };
 
-enum class InterpolationType {
+enum class InterpolationType
+{
     LINEAR,
     PARABOLIC,
     SPLINE
 };
 
-class RobotKinematics {
+class RobotKinematics
+{
 private:
-    Vector3* pivotPoints;
-    float* armLengths;
-    ArmRotation* meshRotations;
+    Vector3 *pivotPoints;
+    float *armLengths;
+    ArmRotation *meshRotations;
     int meshCount;
     float scale;
     Vector3 targetPosition;
@@ -30,25 +32,24 @@ private:
     InterpolationType interpolationType;
 
     float ClampAngle(float angle, float min, float max);
-    bool IsPositionReachable(const Vector3& position);
-
-    static Vector3 TransformAxis(Vector3 axis, Matrix transform);
+    bool IsPositionReachable(const Vector3 &position);
 
 public:
-    RobotKinematics(Vector3* pivotPoints, float* armLengths, ArmRotation* meshRotations, 
+    RobotKinematics(Vector3 *pivotPoints, float *armLengths, ArmRotation *meshRotations,
                     int meshCount, float scale);
-    
+
     void SolveIK();
     Vector3 CalculateEndEffectorPosition();
     void CalculateTrajectory();
-    const std::vector<Vector3>& GetTrajectoryPoints() const { return trajectoryPoints; }
-    void SetTargetPosition(const Vector3& position) { targetPosition = position; }
+    const std::vector<Vector3> &GetTrajectoryPoints() const { return trajectoryPoints; }
+    void SetTargetPosition(const Vector3 &position) { targetPosition = position; }
     Vector3 GetTargetPosition() const { return targetPosition; }
     void SetScale(float newScale) { scale = newScale; }
     void SetInterpolationType(InterpolationType type) { interpolationType = type; }
-    const std::vector<Vector3>& GetControlPoints() const { return controlPoints; }
-    void SetControlPoints(const std::vector<Vector3>& points) { controlPoints = points; }
+    const std::vector<Vector3> &GetControlPoints() const { return controlPoints; }
+    void SetControlPoints(const std::vector<Vector3> &points) { controlPoints = points; }
     bool IsTargetReachable() const { return isTargetReachable; }
-    static Matrix GetHierarchicalTransform(int meshIndex, ArmRotation* rotations, Vector3* pivots);
+    static Vector3 TransformAxis(Vector3 axis, Matrix transform);
+    static Matrix GetHierarchicalTransform(int meshIndex, ArmRotation *rotations, Vector3 *pivots);
     InterpolationType GetInterpolationType() const { return interpolationType; }
 };
