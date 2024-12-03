@@ -89,16 +89,10 @@ void RobotArm::DrawPivotPoints()
 
     for (int i = 0; i <= model.meshCount; i++)
     {
-        // Get hierarchical transform up to parent
         Matrix parentTransform = (i == 0) ? MatrixIdentity() : RobotKinematics::GetHierarchicalTransform(i - 1, meshRotations, pivotPoints);
-
-        // Transform pivot point by parent transforms first
         Vector3 globalPivotPos = Vector3Transform(pivotPoints[i], parentTransform);
-
-        // Apply scale after all transformations
         globalPivotPos = Vector3Scale(globalPivotPos, scale);
 
-        // Visualize pivot point
         DrawSphere(globalPivotPos, 0.1f, RED);
         DrawSphereWires(globalPivotPos, 0.5f, 8, 8, BLACK);
     }
@@ -283,27 +277,20 @@ void RobotArm::Update()
 
     if (isAnimating && !trajectoryPoints.empty())
     {
-        // Aktualizuj czas animacji (GetFrameTime() daje czas między klatkami)
         animationTime += GetFrameTime();
 
-        // Normalizuj czas do zakresu 0-1
         float t = animationTime / ANIMATION_DURATION;
 
-        // Zakończ animację gdy osiągnie koniec
         if (t >= 1.0f)
         {
             isAnimating = false;
             t = 1.0f;
         }
 
-        // Znajdź indeks punktu w trajektorii
         int index = (int)(t * (trajectoryPoints.size() - 1));
         index = Clamp(index, 0, trajectoryPoints.size() - 2);
 
-        // Ustaw cel IK na aktualny punkt trajektorii
         kinematics->SetTargetPosition(trajectoryPoints[index]);
-
-        // Rozwiąż IK dla nowej pozycji
         kinematics->SolveIK();
     }
 }
