@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include "logWindow.h"
 
 class ToolBar
 {
@@ -13,14 +14,13 @@ public:
 
     void Draw();
     void SetStartCallback(std::function<void()> callback);
-    void SetStopCallback(std::function<void()> callback);
-    void SetDebugCallback(std::function<void()> callback);
+    void SetPauseCallback(std::function<void()> callback);
+    void SetStepCallback(std::function<void()> callback);
     void SetResetCallback(std::function<void()> callback);
-    void SetConfigCallback(std::function<void()> callback);
     void UpdateScreenWidth(float newWidth)
     {
         screenWidth = newWidth;
-        buttonDim = ImVec2(120, buttonSize); // Preserve button dimensions
+        buttonDim = ImVec2(120, buttonSize);
     }
 
 private:
@@ -36,6 +36,7 @@ private:
     float buttonSize;
     ImVec2 buttonDim;
     std::vector<Button> buttons;
+    LogWindow logWindow;
 
     void DrawButton(const Button &button);
 };

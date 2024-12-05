@@ -25,4 +25,5 @@ public:
 
         void SetCurrentLine(int line);
     int GetCurrentLine() const;
+    const char* GetText() const { return buffer; }
 };

@@ -60,6 +60,8 @@ RobotArm::~RobotArm()
     delete[] pivotPoints;
     UnloadMaterial(defaultMaterial);
     delete kinematics;
+    if (L)
+        lua_close(L);
 }
 
 void RobotArm::Draw()
@@ -299,4 +301,12 @@ void RobotArm::SetScale(float newScale)
 {
     scale = newScale;
     kinematics->SetScale(newScale);
+}
+
+void RobotArm::RotateJoint(int jointIndex, float angle)
+{
+    if (jointIndex >= 0 && jointIndex < model.meshCount)
+    {
+        UpdateRotation(jointIndex, angle);
+    }
 }

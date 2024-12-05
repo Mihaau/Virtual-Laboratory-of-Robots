@@ -54,8 +54,7 @@ public:
     
     void MoveToPosition(const Vector3& position);
     void RotateJoint(int jointIndex, float angle);
-    void Step();
-    void SetStepMode(bool enabled);
-    int GetCurrentLine() const;
-    void ExecuteLuaScript(const std::string& script);
+
+
+    // void Reset();
 };

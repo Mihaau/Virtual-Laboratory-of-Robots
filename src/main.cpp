@@ -15,6 +15,7 @@
 #include "object3D.h"
 #include "logWindow.h"
 #include "imgui_theme.h"
+#include "luaController.h"
 
 #define RLIGHTS_IMPLEMENTATION
 #include "rlights.h"
@@ -93,10 +94,6 @@ int main()
     RobotArm robotArm("assets/models/robot.glb", shader);
     robotArm.SetScale(0.005f);
 
-    // Object3D cat("assets/models/cat.glb", shader);
-    // cat.SetScale(0.01f);
-    // cat.SetPosition(Vector3{5.0f, 0.0f, 2.0f});
-
     CodeEditor codeEditor;
     AssetBrowser assetBrowser;
     assetBrowser.onAddObjectToScene = [&shader, &sceneObjects](const char *modelPath)
@@ -111,6 +108,37 @@ int main()
     shader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(shader, "viewPos");
     shader.locs[SHADER_LOC_MATRIX_MODEL] = GetShaderLocation(shader, "matModel");
     LightController lightController(shader);
+
+    LuaController luaController(robotArm, logWindow);
+
+    toolBar.SetStartCallback([&luaController, &codeEditor]()
+                             {
+    luaController.LoadScript(codeEditor.GetText());
+    luaController.SetStepMode(false);
+    luaController.Run(); });
+
+    toolBar.SetPauseCallback([&luaController]()
+                             { luaController.Stop(); });
+
+toolBar.SetStepCallback([&luaController, &codeEditor, &logWindow]()
+{
+    if(!luaController.IsRunning()) {
+        std::string code = codeEditor.GetText();
+        logWindow.AddLog("Wczytywanie skryptu...", LogLevel::Info);
+        logWindow.AddLog(code.c_str(), LogLevel::Info); // Pokaż zawartość skryptu
+        
+        luaController.LoadScript(code);
+        luaController.SetStepMode(true);
+        luaController.Run();
+    }
+    luaController.Step();
+});
+
+    // toolBar.SetResetCallback([&luaController, &robotArm]()
+    //                          {
+    // luaController.Stop();
+    // // TODO: Dodaj metodę Reset() do klasy RobotArm
+    // robotArm.Reset(); });
 
     rlImGuiSetup(true);
 
@@ -187,6 +215,23 @@ int main()
 
         toolBar.UpdateScreenWidth(currentWidth);
 
+        void UpdateLuaController() {
+    if (luaController.IsRunning()) {
+        static float waitTime = 0;
+        if (waitTime > 0) {
+            waitTime -= GetFrameTime();
+            return;
+        }
+        
+        if (lua_status(L) == LUA_YIELD) {
+            waitTime = last_wait;
+            last_wait = 0;
+        }
+        
+        luaController.Step();
+    }
+}
+
         // Interfejs ImGui
         rlImGuiBegin();
         ImGui::SetNextWindowPos(ImVec2(currentWidth - sidebarWidth, toolbarHeight));
@@ -245,37 +290,36 @@ int main()
             }
 
             if (ImGui::BeginTabItem("Ustawienia"))
-{
-    ImGui::Text("Filtrowanie tekstur:");
-    
-    const char* filters[] = {
-        "Point (Nearest Neighbor)",
-        "Bilinear",
-        "Trilinear"
-    };
-    
-    static int currentFilter = 1; // Domyślnie bilinear
-    
-    if (ImGui::Combo("Filtr", &currentFilter, filters, IM_ARRAYSIZE(filters)))
-    {
-        switch (currentFilter)
-        {
-            case 0:
-                currentTextureFilter = TEXTURE_FILTER_POINT;
-                break;
-            case 1:
-                currentTextureFilter = TEXTURE_FILTER_BILINEAR;
-                break;
-            case 2:
-                currentTextureFilter = TEXTURE_FILTER_TRILINEAR;
-                break;
-        }
-    }
-    
-    ImGui::TextWrapped("Aktualny filtr: %s", filters[currentFilter]);
-    
-    ImGui::EndTabItem();
-}
+            {
+                ImGui::Text("Filtrowanie tekstur:");
+
+                const char *filters[] = {
+                    "Point (Nearest Neighbor)",
+                    "Bilinear",
+                    "Trilinear"};
+
+                static int currentFilter = 1; // Domyślnie bilinear
+
+                if (ImGui::Combo("Filtr", &currentFilter, filters, IM_ARRAYSIZE(filters)))
+                {
+                    switch (currentFilter)
+                    {
+                    case 0:
+                        currentTextureFilter = TEXTURE_FILTER_POINT;
+                        break;
+                    case 1:
+                        currentTextureFilter = TEXTURE_FILTER_BILINEAR;
+                        break;
+                    case 2:
+                        currentTextureFilter = TEXTURE_FILTER_TRILINEAR;
+                        break;
+                    }
+                }
+
+                ImGui::TextWrapped("Aktualny filtr: %s", filters[currentFilter]);
+
+                ImGui::EndTabItem();
+            }
 
             ImGui::EndTabBar();
         }
@@ -292,8 +336,8 @@ int main()
         ImGui::Begin("Scene View", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
         ImVec2 contentSize = ImGui::GetContentRegionAvail();
         UpdateRenderTexture(target, contentSize);
-        if(currentTextureFilter == TEXTURE_FILTER_TRILINEAR)
-        GenTextureMipmaps(&target.texture);
+        if (currentTextureFilter == TEXTURE_FILTER_TRILINEAR)
+            GenTextureMipmaps(&target.texture);
         SetTextureFilter(target.texture, currentTextureFilter);
         rlImGuiImageRenderTextureFit(&target, true);
         cameraController.SetSceneViewActive(ImGui::IsWindowHovered());
@@ -313,7 +357,7 @@ int main()
         EndDrawing();
     }
     for (auto *obj : sceneObjects)
-    {   
+    {
         delete obj;
     }
     sceneObjects.clear();
