@@ -17,6 +17,7 @@
 #include "imgui_theme.h"
 #include "luaController.h"
 #include "sceneLoader.h"
+#include "pickRobot.h"
 
 #define RLIGHTS_IMPLEMENTATION
 #include "rlights.h"
@@ -51,9 +52,26 @@ void DrawSplashScreen(bool &showSplashScreen, Texture2D &logo)
         ImGui::SetCursorPos(imagePos);
         rlImGuiImageSize(&logo, imageSize.x, imageSize.y);
         ImGui::Separator();
-        ImGui::TextWrapped("Welcome to the Virtual Laboratory of Robots. This project allows you to simulate and control various robotic arms and other 3D objects in a virtual environment.");
+
+        ImGui::TextWrapped("Witamy w Wirtualnym Laboratorium Robotyki Przemysłowej!");
+        ImGui::Spacing();
+        ImGui::Spacing();
+
+        ImGui::TextWrapped("Odkryj możliwości symulacji robotów przemysłowych w realistycznym środowisku 3D.");
+        ImGui::Spacing();
+        ImGui::Spacing();
+
+        ImGui::BulletText("Kontroluj ruchy robotów i doskonal swoje umiejętności sterowania.");
+        ImGui::BulletText("Manipuluj obiektami, podnosząc i przemieszczając elementy w wirtualnej przestrzeni.");
+        ImGui::BulletText("Twórz programy dla robotów dzięki wbudowanemu edytorowi.");
+        ImGui::Spacing();
+        ImGui::Spacing();
+
+        ImGui::TextWrapped("Rozpocznij swoją przygodę z nowoczesną robotyką i ucz się w praktyczny sposób!");
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), "%s", ICON_FA_ROBOT);
         ImGui::Separator();
-        ImGui::Text("Click to continue...");
+        ImGui::Text("Kliknij, aby kontynuować...");
 
         if (IsMouseButtonDown(MOUSE_BUTTON_LEFT))
         {
@@ -111,6 +129,7 @@ int main()
     LightController lightController(shader);
 
     SceneLoader sceneLoader;
+    PickRobot pickRobot;
 
     LuaController luaController(robotArm, logWindow);
 
@@ -135,12 +154,6 @@ int main()
         luaController.Run();
     }
     luaController.Step(); });
-
-    // toolBar.SetResetCallback([&luaController, &robotArm]()
-    //                          {
-    // luaController.Stop();
-    // // TODO: Dodaj metodę Reset() do klasy RobotArm
-    // robotArm.Reset(); });
 
     rlImGuiSetup(true);
 
@@ -254,6 +267,12 @@ int main()
                 ImGui::EndTabItem();
             }
 
+            if (ImGui::BeginTabItem("Roboty"))
+            {
+                pickRobot.DrawImGuiControls();
+                ImGui::EndTabItem();
+            }
+
             // Zakładka dla kontrolek ramienia robota
             if (ImGui::BeginTabItem("Obiekty"))
             {
@@ -344,13 +363,14 @@ int main()
         }
         rlImGuiEnd();
 
-                // Usuń obiekty zaznaczone do usunięcia
+        // Usuń obiekty zaznaczone do usunięcia
         auto it = std::remove_if(sceneObjects.begin(), sceneObjects.end(),
-            [](Object3D* obj) {
-                return obj->markedForDeletion;
-            });
+                                 [](Object3D *obj)
+                                 {
+                                     return obj->markedForDeletion;
+                                 });
         sceneObjects.erase(it, sceneObjects.end());
-        
+
         // Przetwórz kolejkę usuwania
         Object3D::ProcessDeleteQueue();
 

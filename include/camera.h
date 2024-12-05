@@ -17,14 +17,13 @@ public:
     Camera3D& GetCamera() { return camera; }
     const Vector3& GetPosition() const { return camera.position; }
     float GetFOV() const { return camera.fovy; }
-
 private:
     Camera3D camera;
     float cameraDistance;
     float zoomSpeed;
 
-    float yaw;
     float pitch;
+    float yaw;
     Vector2 previousMousePosition;
     float rotationSpeed;
 

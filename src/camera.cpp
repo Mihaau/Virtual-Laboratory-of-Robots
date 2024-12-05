@@ -1,6 +1,6 @@
 #include "camera.h"
 
-CameraController::CameraController(float x, float y, float z) : cameraDistance(10.0f), zoomSpeed(1.0f), yaw(-45.0f),
+CameraController::CameraController(float x, float y, float z) : cameraDistance(20.0f), zoomSpeed(1.0f), yaw(-45.0f),
                                                                 pitch(-45.0f),
                                                                 rotationSpeed(0.2f)
 {
@@ -36,8 +36,8 @@ void CameraController::Update()
         pitch = Clamp(pitch, MIN_PITCH, MAX_PITCH);
 
         float x = cameraDistance * cosf(DEG2RAD * pitch) * cosf(DEG2RAD * yaw);
-        float y = cameraDistance * sinf(DEG2RAD * pitch);
-        float z = cameraDistance * cosf(DEG2RAD * pitch) * sinf(DEG2RAD * yaw);
+        float y = -cameraDistance * sinf(DEG2RAD * pitch);
+        float z = -cameraDistance * cosf(DEG2RAD * pitch) * sinf(DEG2RAD * yaw);
 
         camera.position = Vector3Add(camera.target, Vector3{x, y, z});
     }
