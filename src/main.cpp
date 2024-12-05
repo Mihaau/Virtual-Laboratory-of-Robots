@@ -16,6 +16,7 @@
 #include "logWindow.h"
 #include "imgui_theme.h"
 #include "luaController.h"
+#include "sceneLoader.h"
 
 #define RLIGHTS_IMPLEMENTATION
 #include "rlights.h"
@@ -108,6 +109,8 @@ int main()
     shader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(shader, "viewPos");
     shader.locs[SHADER_LOC_MATRIX_MODEL] = GetShaderLocation(shader, "matModel");
     LightController lightController(shader);
+
+    SceneLoader sceneLoader;
 
     LuaController luaController(robotArm, logWindow);
 
@@ -273,6 +276,8 @@ int main()
                 assetBrowser.DrawImGuiControls();
                 ImGui::EndTabItem();
             }
+
+            sceneLoader.DrawImGuiControls();
 
             if (ImGui::BeginTabItem("Ustawienia"))
             {
