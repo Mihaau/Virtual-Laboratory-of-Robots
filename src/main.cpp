@@ -215,22 +215,22 @@ toolBar.SetStepCallback([&luaController, &codeEditor, &logWindow]()
 
         toolBar.UpdateScreenWidth(currentWidth);
 
-        void UpdateLuaController() {
-    if (luaController.IsRunning()) {
-        static float waitTime = 0;
-        if (waitTime > 0) {
-            waitTime -= GetFrameTime();
-            return;
-        }
+//         void UpdateLuaController() {
+//     if (luaController.IsRunning()) {
+//         static float waitTime = 0;
+//         if (waitTime > 0) {
+//             waitTime -= GetFrameTime();
+//             return;
+//         }
         
-        if (lua_status(L) == LUA_YIELD) {
-            waitTime = last_wait;
-            last_wait = 0;
-        }
+//         if (lua_status(L) == LUA_YIELD) {
+//             waitTime = last_wait;
+//             last_wait = 0;
+//         }
         
-        luaController.Step();
-    }
-}
+//         luaController.Step();
+//     }
+// }
 
         // Interfejs ImGui
         rlImGuiBegin();

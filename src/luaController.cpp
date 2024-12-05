@@ -54,9 +54,24 @@ void LuaController::LoadScript(const std::string& code) {
     luaL_openlibs(L);
     RegisterFunctions();
     
+    // Zapisz wskaźnik this w registry Lua
+    lua_pushlightuserdata(L, this);
+    lua_setfield(L, LUA_REGISTRYINDEX, "LuaController");
+    
+    // Ustaw hook debuggera
+    lua_sethook(L, [](lua_State* L, lua_Debug* ar) {
+        // Pobierz wskaźnik this z registry
+        lua_getfield(L, LUA_REGISTRYINDEX, "LuaController");
+        LuaController* controller = (LuaController*)lua_touserdata(L, -1);
+        lua_pop(L, 1);  // Usuń wskaźnik ze stosu
+        
+        if(controller && ar->event == LUA_HOOKLINE) {
+            lua_yield(L, 0);
+        }
+    }, LUA_MASKLINE, 0);
+    
     if(luaL_loadstring(L, code.c_str()) != LUA_OK) {
-        std::string error = lua_tostring(L, -1);
-        logWindow.AddLog(("Błąd kompilacji: " + error).c_str(), LogLevel::Error);
+        logWindow.AddLog(lua_tostring(L, -1), LogLevel::Error);
         lua_pop(L, 1);
         return;
     }
@@ -88,42 +103,26 @@ void LuaController::Step() {
     logWindow.AddLog("Wykonywanie kroku...", LogLevel::Info);
     
     int nresults;
-    lua_State* from = nullptr; // Nie używamy coroutines, więc from = nullptr
-    int nargs = 0;            // Przy pierwszym wywołaniu nie mamy argumentów
+    lua_State* from = nullptr;
+    int status = lua_resume(L, from, 0, &nresults);
     
-    // Poprawne wywołanie dla Lua 5.4
-    int status = lua_resume(L, from, nargs, &nresults);
+    lua_Debug ar;
+    if(lua_getstack(L, 0, &ar)) {
+        lua_getinfo(L, "Snl", &ar);  
+        std::string message = "Linia " + std::to_string(ar.currentline);
+        logWindow.AddLog(message.c_str(), LogLevel::Info);
+    }
+
+    if(status != LUA_YIELD && status != LUA_OK) {
+        std::string error = lua_tostring(L, -1);
+        logWindow.AddLog(("Błąd wykonania: " + error).c_str(), LogLevel::Error);
+        lua_pop(L, 1);
+        Stop();
+    }
     
-    switch(status) {
-        case LUA_OK: {
-            logWindow.AddLog("Skrypt zakończony", LogLevel::Info);
-            Stop();
-            break;
-        }
-        case LUA_YIELD: {
-            lua_Debug ar;
-            if(lua_getstack(L, 0, &ar)) {
-                lua_getinfo(L, "Snl", &ar);
-                std::string message = "Wykonano krok: linia " + std::to_string(ar.currentline);
-                if(ar.name != nullptr) {
-                    if(strcmp(ar.name, "setJointRotation") == 0) {
-                        message += " (setJointRotation: przegub=" + std::to_string(last_joint) + 
-                                 ", kąt=" + std::to_string(last_angle) + ")";
-                    } else if(strcmp(ar.name, "wait") == 0) {
-                        message += " (wait: " + std::to_string(last_wait) + "s)";
-                    }
-                }
-                logWindow.AddLog(message.c_str(), LogLevel::Info);
-            }
-            break;
-        }
-        default: {
-            std::string error = lua_tostring(L, -1);
-            logWindow.AddLog(("Błąd wykonania: " + error).c_str(), LogLevel::Error);
-            lua_pop(L, 1);
-            Stop();
-            break;
-        }
+    if(status == LUA_OK) {
+        logWindow.AddLog("Skrypt zakończony", LogLevel::Info);
+        Stop();
     }
 }
 
