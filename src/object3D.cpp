@@ -1,40 +1,41 @@
 #include "object3D.h"
 
 int Object3D::nextId = 0;
+std::vector<Object3D*> Object3D::deleteQueue;
 
 Object3D::Object3D(const char *modelPath, Shader shader) : shader(shader),
-                                                           position({0.0f, 0.0f, 0.0f}),
-                                                           rotation({0.0f, 0.0f, 0.0f}),
-                                                           scale(1.0f),
-                                                           color(WHITE),
-                                                           modelPath(modelPath),
-                                                           id(nextId++)
+    position({0.0f, 0.0f, 0.0f}),
+    rotation({0.0f, 0.0f, 0.0f}),
+    scale(1.0f),
+    color(WHITE),
+    modelPath(modelPath),
+    id(nextId++)
 {
     model = LoadModel(modelPath);
-
-    // Inicjalizacja materiału
-    defaultMaterial = LoadMaterialDefault();
-    defaultMaterial.shader = shader;
+    
+    // Tworzenie osobnej kopii materiału dla każdego obiektu
+    material = LoadMaterialDefault();
+    material.shader = shader;
+    
+    // Przypisanie nowego materiału do każdej siatki modelu
+    for (int i = 0; i < model.materialCount; i++) {
+        model.materials[i] = material;
+    }
 
     std::string baseName = fs::path(modelPath).stem().string();
     displayName = baseName + " (" + std::to_string(id) + ")";
-
-    // Konfiguracja shadera
+    
     colorLoc = GetShaderLocation(shader, "materialColor");
-
-    // Przypisz materiał do modelu
-    for (int i = 0; i < model.materialCount; i++)
-    {
-        model.materials[i].shader = shader;
-    }
-
     UpdateTransformMatrix();
 }
 
-Object3D::~Object3D()
+Object3D::~Object3D() 
 {
+    // Prawidłowe czyszczenie zasobów
+    for (int i = 0; i < model.materialCount; i++) {
+        UnloadMaterial(model.materials[i]);
+    }
     UnloadModel(model);
-    UnloadMaterial(defaultMaterial);
 }
 
 void Object3D::UpdateTransformMatrix()
@@ -78,6 +79,20 @@ Object3D *Object3D::Create(const char *modelPath, Shader shader)
     return new Object3D(modelPath, shader);
 }
 
+void Object3D::Delete(Object3D* obj) {
+    if(obj && !obj->markedForDeletion) {
+        obj->markedForDeletion = true;
+        deleteQueue.push_back(obj);
+    }
+}
+
+void Object3D::ProcessDeleteQueue() {
+    for(auto obj : deleteQueue) {
+        delete obj;
+    }
+    deleteQueue.clear();
+}
+
 void Object3D::DrawImGuiControls()
 {
     ImGui::PushID(id);
@@ -89,7 +104,6 @@ void Object3D::DrawImGuiControls()
         {
             Vector3 uiPosition = position;
             if (ImGui::DragFloat3("Position", (float*)&uiPosition, 0.1f)) {
-                // Bezpośrednio przypisujemy pozycję bez przeliczania przez skalę
                 position = uiPosition;
                 updated = true;
             }
@@ -100,11 +114,14 @@ void Object3D::DrawImGuiControls()
             ImGui::TreePop();
         }
 
-        // if (ImGui::ColorEdit4("Color", (float*)&color)) updated = true;
-
         if (updated)
         {
             UpdateTransformMatrix();
+        }
+
+        if (ImGui::Button("Usuń obiekt"))
+        {
+            markedForDeletion = true;
         }
     }
     ImGui::PopID();

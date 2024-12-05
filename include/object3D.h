@@ -4,6 +4,7 @@
 #include "imgui.h"
 #include <string>
 #include <filesystem>
+#include <vector>
 namespace fs = std::filesystem;
 
 class Object3D
@@ -30,11 +31,16 @@ public:
     float GetScale() const { return scale; }
     Color GetColor() const { return color; }
     Model &GetModel() { return model; }
+    static void Delete(Object3D* obj);
+        bool markedForDeletion = false;
+    static std::vector<Object3D*> deleteQueue;
+    static void ProcessDeleteQueue();
 
 private:
     Model model;
     Shader shader;
     Material defaultMaterial;
+    Material material;
 
     static int nextId;
     const int id;  // zmień na const

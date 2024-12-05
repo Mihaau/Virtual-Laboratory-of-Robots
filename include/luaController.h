@@ -13,7 +13,7 @@ private:
     int currentLine;
     float waitTime;                        // Czas oczekiwania dla wait()
     float executeTimer;                    // Timer dla ciągłego wykonywania
-    const float EXECUTION_INTERVAL = 0f; // Interwał między krokami
+    const float EXECUTION_INTERVAL = 0.0f; // Interwał między krokami
     void RegisterFunctions();
     static int lua_setJointRotation(lua_State *L);
     static int lua_wait(lua_State *L);

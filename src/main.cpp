@@ -120,8 +120,8 @@ int main()
     toolBar.SetPauseCallback([&luaController]()
                              { luaController.Stop(); });
 
-toolBar.SetStepCallback([&luaController, &codeEditor, &logWindow]()
-{
+    toolBar.SetStepCallback([&luaController, &codeEditor, &logWindow]()
+                            {
     if(!luaController.IsRunning()) {
         std::string code = codeEditor.GetText();
         logWindow.AddLog("Wczytywanie skryptu...", LogLevel::Info);
@@ -131,8 +131,7 @@ toolBar.SetStepCallback([&luaController, &codeEditor, &logWindow]()
         luaController.SetStepMode(true);
         luaController.Run();
     }
-    luaController.Step();
-});
+    luaController.Step(); });
 
     // toolBar.SetResetCallback([&luaController, &robotArm]()
     //                          {
@@ -186,8 +185,8 @@ toolBar.SetStepCallback([&luaController, &codeEditor, &logWindow]()
         const float toolbarHeight = 50.0f;
         const float logWindowHeight = currentHeight * 0.2f;
 
-            float deltaTime = GetFrameTime();
-            luaController.Update(deltaTime);
+        float deltaTime = GetFrameTime();
+        luaController.Update(deltaTime);
 
         if (float wheelMove = GetMouseWheelMove(); wheelMove != 0)
         {
@@ -217,7 +216,6 @@ toolBar.SetStepCallback([&luaController, &codeEditor, &logWindow]()
         ClearBackground(DARKGRAY);
 
         toolBar.UpdateScreenWidth(currentWidth);
-
 
         // Interfejs ImGui
         rlImGuiBegin();
@@ -340,6 +338,16 @@ toolBar.SetStepCallback([&luaController, &codeEditor, &logWindow]()
             DrawSplashScreen(showSplashScreen, logo);
         }
         rlImGuiEnd();
+
+                // Usuń obiekty zaznaczone do usunięcia
+        auto it = std::remove_if(sceneObjects.begin(), sceneObjects.end(),
+            [](Object3D* obj) {
+                return obj->markedForDeletion;
+            });
+        sceneObjects.erase(it, sceneObjects.end());
+        
+        // Przetwórz kolejkę usuwania
+        Object3D::ProcessDeleteQueue();
 
         EndDrawing();
     }
