@@ -134,3 +134,42 @@ void LuaController::SetStepMode(bool enabled) {
         logWindow.AddLog("Wyłączono tryb krokowy", LogLevel::Info);
     }
 }
+
+void LuaController::Update(float deltaTime) {
+    if (!isRunning || stepMode) return;
+
+    if (waitTime > 0) {
+        waitTime -= deltaTime;
+        return;
+    }
+
+    executeTimer += deltaTime;
+    if (executeTimer >= EXECUTION_INTERVAL) {
+        executeTimer = 0;
+        
+        int nresults;
+        int status = lua_resume(L, nullptr, 0, &nresults);
+        
+        lua_Debug ar;
+        if(lua_getstack(L, 0, &ar)) {
+            lua_getinfo(L, "Snl", &ar);
+            std::string message = "Wykonano linię " + std::to_string(ar.currentline);
+            logWindow.AddLog(message.c_str(), LogLevel::Info);
+        }
+
+        if (status == LUA_YIELD) {
+            // Ustaw czas oczekiwania z funkcji wait()
+            waitTime = last_wait;
+        }
+        else if (status == LUA_OK) {
+            logWindow.AddLog("Skrypt zakończony", LogLevel::Info);
+            Stop();
+        }
+        else {
+            std::string error = lua_tostring(L, -1);
+            logWindow.AddLog(("Błąd wykonania: " + error).c_str(), LogLevel::Error);
+            lua_pop(L, 1);
+            Stop();
+        }
+    }
+}

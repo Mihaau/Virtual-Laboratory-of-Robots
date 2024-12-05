@@ -184,7 +184,10 @@ toolBar.SetStepCallback([&luaController, &codeEditor, &logWindow]()
         const float currentHeight = (float)GetScreenHeight();
         const float sidebarWidth = currentWidth * 0.4; // 33% of window width
         const float toolbarHeight = 50.0f;
-        const float logWindowHeight = 200.0f; // Wysokość okna logów
+        const float logWindowHeight = currentHeight * 0.2f;
+
+            float deltaTime = GetFrameTime();
+            luaController.Update(deltaTime);
 
         if (float wheelMove = GetMouseWheelMove(); wheelMove != 0)
         {
@@ -215,22 +218,6 @@ toolBar.SetStepCallback([&luaController, &codeEditor, &logWindow]()
 
         toolBar.UpdateScreenWidth(currentWidth);
 
-//         void UpdateLuaController() {
-//     if (luaController.IsRunning()) {
-//         static float waitTime = 0;
-//         if (waitTime > 0) {
-//             waitTime -= GetFrameTime();
-//             return;
-//         }
-        
-//         if (lua_status(L) == LUA_YIELD) {
-//             waitTime = last_wait;
-//             last_wait = 0;
-//         }
-        
-//         luaController.Step();
-//     }
-// }
 
         // Interfejs ImGui
         rlImGuiBegin();
