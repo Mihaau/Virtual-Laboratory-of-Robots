@@ -7,7 +7,7 @@ RobotArm::RobotArm(const char *modelPath, Shader shader) : shader(shader)
     meshRotations = new ArmRotation[model.meshCount];
     scale = 0.01f;
     color = WHITE;
-    showPivotPoints = true;
+    showPivotPoints = false;
     showTrajectory = false;
     isAnimating = false;
 

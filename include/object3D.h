@@ -19,9 +19,21 @@ public:
     static void ResetIdCounter() { nextId = 0; }
 
     // Settery
-    void SetPosition(Vector3 pos) { position = pos; }
-    void SetRotation(Vector3 rot) { rotation = rot; }
-    void SetScale(float scl) { scale = scl; }
+    void SetPosition(Vector3 pos)
+    {
+        position = pos;
+        UpdateTransformMatrix();
+    }
+    void SetRotation(Vector3 rot)
+    {
+        rotation = rot;
+        UpdateTransformMatrix();
+    }
+    void SetScale(float scl)
+    {
+        scale = scl;
+        UpdateTransformMatrix();
+    }
     void SetColor(Color col) { color = col; }
 
     // Gettery
@@ -31,11 +43,11 @@ public:
     float GetScale() const { return scale; }
     Color GetColor() const { return color; }
     Model &GetModel() { return model; }
-    static void Delete(Object3D* obj);
-        bool markedForDeletion = false;
-    static std::vector<Object3D*> deleteQueue;
+    static void Delete(Object3D *obj);
+    bool markedForDeletion = false;
+    static std::vector<Object3D *> deleteQueue;
     static void ProcessDeleteQueue();
-     const std::string& GetModelPath() const { return modelPath; }
+    const std::string &GetModelPath() const { return modelPath; }
 
 private:
     Model model;
@@ -44,16 +56,16 @@ private:
     Material material;
 
     static int nextId;
-    const int id;  // zmień na const
+    const int id; // zmień na const
     std::string displayName;
 
     Vector3 position;
-    void SetUIPosition(const Vector3& uiPos) {
+    void SetUIPosition(const Vector3 &uiPos)
+    {
         position = Vector3{
             uiPos.x / scale,
             uiPos.y / scale,
-            uiPos.z / scale
-        };
+            uiPos.z / scale};
     }
     Vector3 rotation;
     float scale;

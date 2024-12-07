@@ -46,14 +46,21 @@ void SceneLoader::DrawImGuiControls() {
             ImGui::Text("%s", file.c_str());
             ImGui::SameLine();
             
-            std::string buttonId = "Załaduj##" + file;
-            if (ImGui::Button(buttonId.c_str())) {
+            std::string loadButtonId = "Załaduj##" + file;
+            if (ImGui::Button(loadButtonId.c_str())) {
                 if (onLoadScene) {
-                    // Usuwamy rozszerzenie .scn z nazwy pliku
                     std::string filename = file;
                     filename = filename.substr(0, filename.length() - 4);
                     onLoadScene(filename);
                 }
+            }
+            
+            ImGui::SameLine();
+            std::string deleteButtonId = "Usuń##" + file;
+            if (ImGui::Button(deleteButtonId.c_str())) {
+                std::string filename = file;
+                filename = filename.substr(0, filename.length() - 4);
+                DeleteScene(filename);
             }
         }
 
@@ -96,41 +103,71 @@ bool SceneLoader::SaveScene(const std::string& filename, const std::vector<Objec
 }
 
 bool SceneLoader::LoadScene(const std::string& filename, std::vector<Object3D*>& objects, Shader& shader) {
-    std::string filepath = scenesPath + "/" + filename;
+    if (!LoadSceneFile(filename)) {
+        return false;
+    }
+    
+    UpdateObjects(objects, shader);
+    return true;
+}
+
+bool SceneLoader::LoadSceneFile(const std::string& filename) {
+    std::string filepath = scenesPath + "/" + filename + ".scn";
     std::ifstream file(filepath);
     
-    if (!file.is_open()) return false;
+    if (!file.is_open()) {
+        return false;
+    }
 
-    json j;
-    file >> j;
+    try {
+        nlohmann::json j;
+        file >> j;
+        
+        currentScene.objects.clear();
+        
+        for (const auto& objData : j["objects"]) {
+            ObjectData obj;
+            obj.modelPath = objData["modelPath"];
+            
+            obj.position.x = objData["position"][0];
+            obj.position.y = objData["position"][1]; 
+            obj.position.z = objData["position"][2];
+            
+            obj.rotation.x = objData["rotation"][0];
+            obj.rotation.y = objData["rotation"][1];
+            obj.rotation.z = objData["rotation"][2];
+            
+            obj.scale = objData["scale"];
+            
+            currentScene.objects.push_back(obj);
+        }
+        
+        return true;
+    }
+    catch (nlohmann::json::exception& e) {
+        return false;
+    }
+}
 
-    // Usuń istniejące obiekty
+void SceneLoader::UpdateObjects(std::vector<Object3D*>& objects, Shader& shader) {
     for (auto* obj : objects) {
         delete obj;
     }
     objects.clear();
-
-    // Wczytaj nowe obiekty
-    for (const auto& objJson : j["objects"]) {
-        std::string modelPath = objJson["modelPath"];
-        Vector3 position = {
-            objJson["position"][0],
-            objJson["position"][1],
-            objJson["position"][2]
-        };
-        Vector3 rotation = {
-            objJson["rotation"][0],
-            objJson["rotation"][1],
-            objJson["rotation"][2]
-        };
-        float scale = objJson["scale"];
-
-        Object3D* obj = Object3D::Create(modelPath.c_str(), shader);
-        obj->SetPosition(position);
-        obj->SetRotation(rotation);
-        obj->SetScale(scale);
+    
+    for (const auto& objData : currentScene.objects) {
+        Object3D* obj = Object3D::Create(objData.modelPath.c_str(), shader);
+        obj->SetPosition(objData.position);
+        obj->SetRotation(objData.rotation); 
+        obj->SetScale(objData.scale);
         objects.push_back(obj);
     }
+}
 
-    return true;
+void SceneLoader::DeleteScene(const std::string& filename) {
+    std::string filepath = scenesPath + "/" + filename + ".scn";
+    if (fs::exists(filepath)) {
+        fs::remove(filepath);
+        ScanDirectory(); // Odśwież listę scen
+    }
 }

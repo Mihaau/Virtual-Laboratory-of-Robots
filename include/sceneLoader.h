@@ -37,9 +37,13 @@ public:
     std::function<void(const std::string&)> onLoadScene;
 
 private:
+
+    bool LoadSceneFile(const std::string& filename);
+    void UpdateObjects(std::vector<Object3D*>& objects, Shader& shader);
     std::vector<std::string> sceneFiles;
     const std::string scenesPath = "assets/scenes";
     SceneData currentScene;
+    void DeleteScene(const std::string& filename);
 };
 
 #endif // SCENE_LOADER_H
