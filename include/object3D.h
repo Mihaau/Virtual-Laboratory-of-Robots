@@ -35,6 +35,7 @@ public:
         bool markedForDeletion = false;
     static std::vector<Object3D*> deleteQueue;
     static void ProcessDeleteQueue();
+     const std::string& GetModelPath() const { return modelPath; }
 
 private:
     Model model;

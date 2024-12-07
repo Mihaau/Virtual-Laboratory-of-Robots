@@ -131,6 +131,16 @@ int main()
     SceneLoader sceneLoader;
     PickRobot pickRobot;
 
+    sceneLoader.onSaveScene = [&sceneObjects, &sceneLoader](const std::string &filename)
+    {
+        sceneLoader.SaveScene(filename, sceneObjects);
+    };
+
+    sceneLoader.onLoadScene = [&sceneObjects, &sceneLoader, &shader](const std::string &filename)
+    {
+        sceneLoader.LoadScene(filename, sceneObjects, shader);
+    };
+
     LuaController luaController(robotArm, logWindow);
 
     toolBar.SetStartCallback([&luaController, &codeEditor]()
