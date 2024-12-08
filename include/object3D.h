@@ -42,12 +42,13 @@ public:
     Vector3 GetRotation() const { return rotation; }
     float GetScale() const { return scale; }
     Color GetColor() const { return color; }
-    Model &GetModel() { return model; }
+    const Model &GetModel() const { return model; }
     static void Delete(Object3D *obj);
     bool markedForDeletion = false;
     static std::vector<Object3D *> deleteQueue;
     static void ProcessDeleteQueue();
     const std::string &GetModelPath() const { return modelPath; }
+    Matrix GetTransform() const { return transformMatrix; }
 
 private:
     Model model;

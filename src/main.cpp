@@ -226,6 +226,7 @@ int main()
         lightController.Update();
         BeginMode3D(cameraController.GetCamera());
         robotArm.Update();
+        robotArm.CheckCollisions(sceneObjects);
         robotArm.Draw();
         for (auto *obj : sceneObjects)
         {

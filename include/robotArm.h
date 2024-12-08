@@ -8,6 +8,7 @@
 #include "lua.hpp"
 #include "vector"
 #include "robotKinematics.h"
+#include "object3D.h"
 
 class RobotArm {
 private:
@@ -31,6 +32,11 @@ private:
     bool stepMode;
     int currentLine;
     lua_State* L;
+
+        Vector3 gripperPosition;    // Position of the gripper sphere
+    float gripperRadius;        // Radius of the gripper sphere
+    bool isColliding;          // Collision state
+    Color gripperColor;
 public:
     RobotArm(const char* modelPath, Shader shader);
     ~RobotArm();
@@ -55,6 +61,7 @@ public:
     void MoveToPosition(const Vector3& position);
     void RotateJoint(int jointIndex, float angle);
 
-
+        void CheckCollisions(const std::vector<Object3D*>& objects);
+    void DrawGripper();
     // void Reset();
 };
