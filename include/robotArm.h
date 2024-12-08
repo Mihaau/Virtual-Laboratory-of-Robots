@@ -37,6 +37,13 @@ private:
     float gripperRadius;        // Radius of the gripper sphere
     bool isColliding;          // Collision state
     Color gripperColor;
+
+    Object3D* grippedObject = nullptr;
+    bool isGripping = false;
+    Vector3 gripOffset; // Offset między chwytakiem a obiektem
+
+        LogWindow& logWindow;
+    const std::vector<Object3D*>* sceneObjects = nullptr;
 public:
     RobotArm(const char* modelPath, Shader shader);
     ~RobotArm();
@@ -63,5 +70,11 @@ public:
 
         void CheckCollisions(const std::vector<Object3D*>& objects);
     void DrawGripper();
+
+        void GripObject();
+    void ReleaseObject();
+    bool CanGrip() const { return isColliding && !isGripping; }
+    bool IsGripping() const { return isGripping; }
+    void SetSceneObjects(const std::vector<Object3D*>& objects) { sceneObjects = &objects; }
     // void Reset();
 };

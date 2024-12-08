@@ -1,6 +1,7 @@
 #include "robotArm.h"
 
-RobotArm::RobotArm(const char *modelPath, Shader shader) : shader(shader)
+RobotArm::RobotArm(const char *modelPath, Shader shader) 
+    : shader(shader), logWindow(LogWindow::GetInstance())
 {
     model = LoadModel(modelPath);
     meshVisibility = new bool[model.meshCount];
@@ -51,7 +52,7 @@ RobotArm::RobotArm(const char *modelPath, Shader shader) : shader(shader)
     defaultMaterial.shader = shader;
     kinematics = new RobotKinematics(pivotPoints, armLengths, meshRotations, model.meshCount, scale);
 
-        gripperRadius = 20.0f;
+    gripperRadius = 20.0f;
     isColliding = false;
     gripperColor = GREEN;
 }
@@ -134,6 +135,39 @@ void RobotArm::DrawImGuiControls()
     static LogWindow &logWindow = LogWindow::GetInstance();
     if (ImGui::CollapsingHeader("Robot Arm Controls"))
     {
+                if (ImGui::TreeNode("Chwytak"))
+        {
+            // Wyświetl aktualny stan
+            ImGui::Text("Stan: %s", isColliding ? "Wykryto obiekt" : "Brak kolizji");
+            ImGui::Text("Chwytanie: %s", isGripping ? "Aktywne" : "Nieaktywne");
+
+            // Przyciski sterowania chwytakiem
+            if (isColliding && !isGripping)
+            {
+                if (ImGui::Button("Chwyć obiekt"))
+                {
+                    GripObject();
+                    logWindow.AddLog("Chwycono obiekt", LogLevel::Info);
+                }
+            }
+            else if (isGripping)
+            {
+                if (ImGui::Button("Puść obiekt"))
+                {
+                    ReleaseObject();
+                    logWindow.AddLog("Puszczono obiekt", LogLevel::Info);
+                }
+            }
+
+            // Wyświetl informacje o pozycji chwytaka
+            ImGui::Text("Pozycja chwytaka:");
+            ImGui::Text("X: %.2f Y: %.2f Z: %.2f", 
+                gripperPosition.x, 
+                gripperPosition.y, 
+                gripperPosition.z);
+
+            ImGui::TreePop();
+        }
         if (ImGui::TreeNode("Mesh Visibility"))
         {
             for (int i = 0; i < model.meshCount; i++)
@@ -262,7 +296,7 @@ void RobotArm::DrawImGuiControls()
                 (unsigned char)(col[2] * 255),
                 (unsigned char)(col[3] * 255)};
         }
-    }
+}
 }
 void RobotArm::DrawTrajectory()
 {
@@ -300,6 +334,12 @@ void RobotArm::Update()
         kinematics->SetTargetPosition(trajectoryPoints[index]);
         kinematics->SolveIK();
     }
+
+    if (isGripping && grippedObject)
+    {
+        Vector3 newPos = Vector3Add(gripperPosition, gripOffset);
+        grippedObject->SetPosition(newPos);
+    }
 }
 
 void RobotArm::SetScale(float newScale)
@@ -316,58 +356,72 @@ void RobotArm::RotateJoint(int jointIndex, float angle)
     }
 }
 
-void RobotArm::CheckCollisions(const std::vector<Object3D*>& objects) {
-    static LogWindow& logWindow = LogWindow::GetInstance();
+void RobotArm::CheckCollisions(const std::vector<Object3D *> &objects)
+{
+    static LogWindow &logWindow = LogWindow::GetInstance();
     static bool wasColliding = false; // Do śledzenia poprzedniego stanu kolizji
-    
+
     Matrix parentTransform = RobotKinematics::GetHierarchicalTransform(model.meshCount - 1, meshRotations, pivotPoints);
     gripperPosition = Vector3Transform(pivotPoints[model.meshCount], parentTransform);
     gripperPosition = Vector3Scale(gripperPosition, scale);
 
     bool currentlyColliding = false;
     std::string collidingObjectName;
-    
-    for (const auto* obj : objects) {
-        const Model& objModel = obj->GetModel();
-        
+
+    for (const auto *obj : objects)
+    {
+        const Model &objModel = obj->GetModel();
+
         BoundingBox objBox = GetMeshBoundingBox(objModel.meshes[0]);
         Vector3 objPos = obj->GetPosition();
         float objScale = obj->GetScale();
-        
+
         Vector3 min = Vector3Add(Vector3Scale(objBox.min, objScale), objPos);
         Vector3 max = Vector3Add(Vector3Scale(objBox.max, objScale), objPos);
-        BoundingBox transformedBox = { min, max };
-        
-        if (CheckCollisionBoxSphere(transformedBox, gripperPosition, gripperRadius * scale)) {
-            for (int i = 0; i < objModel.meshCount; i++) {
+        BoundingBox transformedBox = {min, max};
+
+        if (CheckCollisionBoxSphere(transformedBox, gripperPosition, gripperRadius * scale))
+        {
+            if (isGripping)
+            {
+                return;
+            }
+            for (int i = 0; i < objModel.meshCount; i++)
+            {
                 Ray ray;
                 ray.position = gripperPosition;
                 ray.direction = {0, 0, 0};
-                
+
                 const int numRays = 8;
-                for (int j = 0; j < numRays; j++) {
+                for (int j = 0; j < numRays; j++)
+                {
                     float angle = (2.0f * PI * j) / numRays;
                     ray.direction = {cosf(angle), 0.0f, sinf(angle)};
-                    
+
                     Matrix transform = obj->GetTransform();
                     RayCollision collision = GetRayCollisionMesh(ray, objModel.meshes[i], transform);
-                    if (collision.hit && collision.distance < gripperRadius * scale) {
+                    if (collision.hit && collision.distance < gripperRadius * scale)
+                    {
                         currentlyColliding = true;
                         collidingObjectName = obj->GetModelPath();
                         break;
                     }
                 }
-                if (currentlyColliding) break;
+                if (currentlyColliding)
+                    break;
             }
         }
-        if (currentlyColliding) break;
+        if (currentlyColliding)
+            break;
     }
 
     // Logowanie zmian stanu kolizji
-    if (currentlyColliding && !wasColliding) {
+    if (currentlyColliding && !wasColliding)
+    {
         logWindow.AddLog(("Wykryto kolizję z obiektem: " + collidingObjectName).c_str(), LogLevel::Warning);
     }
-    else if (!currentlyColliding && wasColliding) {
+    else if (!currentlyColliding && wasColliding)
+    {
         logWindow.AddLog("Koniec kolizji", LogLevel::Info);
     }
 
@@ -376,9 +430,49 @@ void RobotArm::CheckCollisions(const std::vector<Object3D*>& objects) {
     gripperColor = isColliding ? RED : GREEN;
 }
 
-void RobotArm::DrawGripper() {
+void RobotArm::DrawGripper()
+{
     // Dostosuj promień do skali modelu
     float scaledRadius = gripperRadius * scale;
     DrawSphere(gripperPosition, scaledRadius, gripperColor);
-    DrawSphereWires(gripperPosition, scaledRadius, 8, 8, BLACK);
+}
+
+void RobotArm::GripObject() 
+{
+    if (!isColliding || isGripping || !sceneObjects)
+        return;
+
+    for (const auto* obj : *sceneObjects) 
+    {
+        const Model& objModel = obj->GetModel();
+        BoundingBox objBox = GetMeshBoundingBox(objModel.meshes[0]);
+        Vector3 objPos = obj->GetPosition();
+        float objScale = obj->GetScale();
+        
+        // Tworzenie transformed bounding box
+        BoundingBox transformedBox = {
+            Vector3Add(Vector3Scale(objBox.min, objScale), objPos),
+            Vector3Add(Vector3Scale(objBox.max, objScale), objPos)
+        };
+        
+        if (CheckCollisionBoxSphere(transformedBox, gripperPosition, gripperRadius * scale)) 
+        {
+            grippedObject = const_cast<Object3D*>(obj);
+            isGripping = true;
+            // Zapisz offset między chwytakiem a obiektem
+            gripOffset = Vector3Subtract(objPos, gripperPosition);
+            logWindow.AddLog("Obiekt chwycony", LogLevel::Info);
+            break;
+        }
+    }
+}
+
+void RobotArm::ReleaseObject()
+{
+    if (!isGripping)
+        return;
+
+    grippedObject = nullptr;
+    isGripping = false;
+    logWindow.AddLog("Obiekt puszczony", LogLevel::Info);
 }

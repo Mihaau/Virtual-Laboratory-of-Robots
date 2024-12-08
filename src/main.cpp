@@ -141,6 +141,8 @@ int main()
         sceneLoader.LoadScene(filename, sceneObjects, shader);
     };
 
+    robotArm.SetSceneObjects(sceneObjects);
+
     LuaController luaController(robotArm, logWindow);
 
     toolBar.SetStartCallback([&luaController, &codeEditor]()
