@@ -248,3 +248,17 @@ void RobotKinematics::CalculateTrajectory() {
         }
     }
 }
+
+Vector3 RobotKinematics::GetGripperTransform(const Vector3& objectOffset) const {
+    // Pobierz transformację ostatniego elementu (chwytaka)
+    Matrix gripperTransform = GetHierarchicalTransform(meshCount - 1, meshRotations, pivotPoints);
+    
+    // Oblicz pozycję chwytaka
+    Vector3 gripperPos = Vector3Transform(pivotPoints[meshCount], gripperTransform);
+    
+    // Zastosuj offset obiektu względem chwytaka
+    Vector3 objectPos = Vector3Add(gripperPos, objectOffset);
+    
+    // Zastosuj skalę robota
+    return Vector3Scale(objectPos, scale);
+}

@@ -335,10 +335,26 @@ void RobotArm::Update()
         kinematics->SolveIK();
     }
 
-    if (isGripping && grippedObject)
-    {
-        Vector3 newPos = Vector3Add(gripperPosition, gripOffset);
+    if (isGripping && grippedObject) {
+        // Używamy kinematyki do obliczenia pozycji obiektu
+        Vector3 newPos = kinematics->GetGripperTransform(gripOffset);
         grippedObject->SetPosition(newPos);
+        
+        // Opcjonalnie: możemy również przenosić rotację z chwytaka na obiekt
+        Matrix gripperTransform = kinematics->GetHierarchicalTransform(
+            model.meshCount - 1, 
+            meshRotations, 
+            pivotPoints
+        );
+        
+        // Wyodrębnienie kątów rotacji z macierzy transformacji
+        Vector3 rotation = {
+            -atan2f(gripperTransform.m9, gripperTransform.m10) * RAD2DEG,
+            -atan2f(-gripperTransform.m8, sqrtf(gripperTransform.m9 * gripperTransform.m9 + gripperTransform.m10 * gripperTransform.m10)) * RAD2DEG,
+            -atan2f(gripperTransform.m4, gripperTransform.m0) * RAD2DEG
+        };
+        
+        grippedObject->SetRotation(rotation);
     }
 }
 
