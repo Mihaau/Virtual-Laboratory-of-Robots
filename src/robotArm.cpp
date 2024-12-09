@@ -1,6 +1,6 @@
 #include "robotArm.h"
 
-RobotArm::RobotArm(const char *modelPath, Shader shader) 
+RobotArm::RobotArm(const char *modelPath, Shader shader)
     : shader(shader), logWindow(LogWindow::GetInstance())
 {
     model = LoadModel(modelPath);
@@ -135,11 +135,13 @@ void RobotArm::DrawImGuiControls()
     static LogWindow &logWindow = LogWindow::GetInstance();
     if (ImGui::CollapsingHeader("Robot Arm Controls"))
     {
-                if (ImGui::TreeNode("Chwytak"))
+        if (ImGui::TreeNode("Chwytak"))
         {
             // Wyświetl aktualny stan
             ImGui::Text("Stan: %s", isColliding ? "Wykryto obiekt" : "Brak kolizji");
             ImGui::Text("Chwytanie: %s", isGripping ? "Aktywne" : "Nieaktywne");
+            ImGui::Text("Offset chwytaka: X:%.3f Y:%.3f Z:%.3f",
+                        gripOffset.x, gripOffset.y, gripOffset.z);
 
             // Przyciski sterowania chwytakiem
             if (isColliding && !isGripping)
@@ -161,10 +163,10 @@ void RobotArm::DrawImGuiControls()
 
             // Wyświetl informacje o pozycji chwytaka
             ImGui::Text("Pozycja chwytaka:");
-            ImGui::Text("X: %.2f Y: %.2f Z: %.2f", 
-                gripperPosition.x, 
-                gripperPosition.y, 
-                gripperPosition.z);
+            ImGui::Text("X: %.2f Y: %.2f Z: %.2f",
+                        gripperPosition.x,
+                        gripperPosition.y,
+                        gripperPosition.z);
 
             ImGui::TreePop();
         }
@@ -296,7 +298,7 @@ void RobotArm::DrawImGuiControls()
                 (unsigned char)(col[2] * 255),
                 (unsigned char)(col[3] * 255)};
         }
-}
+    }
 }
 void RobotArm::DrawTrajectory()
 {
@@ -335,27 +337,38 @@ void RobotArm::Update()
         kinematics->SolveIK();
     }
 
-    if (isGripping && grippedObject) {
-        // Używamy kinematyki do obliczenia pozycji obiektu
-        Vector3 newPos = kinematics->GetGripperTransform(gripOffset);
-        grippedObject->SetPosition(newPos);
-        
-        // Opcjonalnie: możemy również przenosić rotację z chwytaka na obiekt
-        Matrix gripperTransform = kinematics->GetHierarchicalTransform(
-            model.meshCount - 1, 
-            meshRotations, 
-            pivotPoints
-        );
-        
-        // Wyodrębnienie kątów rotacji z macierzy transformacji
-        Vector3 rotation = {
-            -atan2f(gripperTransform.m9, gripperTransform.m10) * RAD2DEG,
-            -atan2f(-gripperTransform.m8, sqrtf(gripperTransform.m9 * gripperTransform.m9 + gripperTransform.m10 * gripperTransform.m10)) * RAD2DEG,
-            -atan2f(gripperTransform.m4, gripperTransform.m0) * RAD2DEG
-        };
-        
-        grippedObject->SetRotation(rotation);
-    }
+if (isGripping && grippedObject)
+{
+    Matrix gripperTransform = kinematics->GetHierarchicalTransform(
+        model.meshCount - 1,
+        meshRotations,
+        pivotPoints);
+
+    Vector3 newPos = kinematics->GetGripperTransform(gripOffset);
+    newPos = Vector3Add(newPos, gripOffset);
+
+    Vector3 baseRotation = {
+        -atan2f(gripperTransform.m9, gripperTransform.m10) * RAD2DEG,
+        -atan2f(-gripperTransform.m8, sqrtf(gripperTransform.m9 * gripperTransform.m9 + gripperTransform.m10 * gripperTransform.m10)) * RAD2DEG,
+        -atan2f(gripperTransform.m4, gripperTransform.m0) * RAD2DEG};
+
+    // Oblicz rotację
+    Vector3 finalRotation = Vector3Add(baseRotation, rotationOffset);
+    
+    // Oblicz offset pozycji wynikający z obrotu wokół nowego punktu
+    Matrix rotationMatrix = MatrixRotateXYZ({
+        finalRotation.x * DEG2RAD,
+        finalRotation.y * DEG2RAD,
+        finalRotation.z * DEG2RAD
+    });
+    
+    Vector3 rotatedOffset = Vector3Transform(gripOffset, rotationMatrix);
+    Vector3 positionOffset = Vector3Subtract(rotatedOffset, gripOffset);
+    
+    // Zastosuj rotację i skorygowaną pozycję
+    grippedObject->SetRotation(finalRotation);
+    grippedObject->SetPosition(Vector3Add(newPos, positionOffset));
+}
 }
 
 void RobotArm::SetScale(float newScale)
@@ -453,30 +466,42 @@ void RobotArm::DrawGripper()
     DrawSphere(gripperPosition, scaledRadius, gripperColor);
 }
 
-void RobotArm::GripObject() 
+void RobotArm::GripObject()
 {
     if (!isColliding || isGripping || !sceneObjects)
         return;
 
-    for (const auto* obj : *sceneObjects) 
+    for (const auto *obj : *sceneObjects)
     {
-        const Model& objModel = obj->GetModel();
+        const Model &objModel = obj->GetModel();
         BoundingBox objBox = GetMeshBoundingBox(objModel.meshes[0]);
         Vector3 objPos = obj->GetPosition();
         float objScale = obj->GetScale();
-        
-        // Tworzenie transformed bounding box
+
         BoundingBox transformedBox = {
             Vector3Add(Vector3Scale(objBox.min, objScale), objPos),
-            Vector3Add(Vector3Scale(objBox.max, objScale), objPos)
-        };
-        
-        if (CheckCollisionBoxSphere(transformedBox, gripperPosition, gripperRadius * scale)) 
+            Vector3Add(Vector3Scale(objBox.max, objScale), objPos)};
+
+        if (CheckCollisionBoxSphere(transformedBox, gripperPosition, gripperRadius * scale))
         {
-            grippedObject = const_cast<Object3D*>(obj);
+            grippedObject = const_cast<Object3D *>(obj);
             isGripping = true;
-            // Zapisz offset między chwytakiem a obiektem
+
+            // Zachowaj offset pozycji
             gripOffset = Vector3Subtract(objPos, gripperPosition);
+
+            // Zachowaj offset rotacji
+            Vector3 objRotation = obj->GetRotation();
+            Matrix gripperTransform = kinematics->GetHierarchicalTransform(
+                model.meshCount - 1,
+                meshRotations,
+                pivotPoints);
+            Vector3 gripperRotation = {
+                -atan2f(gripperTransform.m9, gripperTransform.m10) * RAD2DEG,
+                -atan2f(-gripperTransform.m8, sqrtf(gripperTransform.m9 * gripperTransform.m9 + gripperTransform.m10 * gripperTransform.m10)) * RAD2DEG,
+                -atan2f(gripperTransform.m4, gripperTransform.m0) * RAD2DEG};
+            rotationOffset = Vector3Subtract(objRotation, gripperRotation);
+
             logWindow.AddLog("Obiekt chwycony", LogLevel::Info);
             break;
         }
@@ -487,7 +512,6 @@ void RobotArm::ReleaseObject()
 {
     if (!isGripping)
         return;
-
     grippedObject = nullptr;
     isGripping = false;
     logWindow.AddLog("Obiekt puszczony", LogLevel::Info);

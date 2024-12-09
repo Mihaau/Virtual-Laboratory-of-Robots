@@ -45,7 +45,7 @@ void Object3D::UpdateTransformMatrix()
     Matrix rotationY = MatrixRotateY(rotation.y * DEG2RAD);
     Matrix rotationZ = MatrixRotateZ(rotation.z * DEG2RAD);
     Matrix scaleMatrix = MatrixScale(scale, scale, scale);
-
+    
     transformMatrix = MatrixIdentity();
     transformMatrix = MatrixMultiply(transformMatrix, scaleMatrix);
     transformMatrix = MatrixMultiply(transformMatrix, rotationX);

@@ -41,6 +41,7 @@ private:
     Object3D* grippedObject = nullptr;
     bool isGripping = false;
     Vector3 gripOffset; // Offset między chwytakiem a obiektem
+    Vector3 rotationOffset; // Offset między rotacją chwytaka a obiektem
 
         LogWindow& logWindow;
     const std::vector<Object3D*>* sceneObjects = nullptr;
