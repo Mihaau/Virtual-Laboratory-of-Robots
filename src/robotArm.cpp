@@ -339,35 +339,32 @@ void RobotArm::Update()
 
 if (isGripping && grippedObject)
 {
+    // Pobierz transformację chwytaka
     Matrix gripperTransform = kinematics->GetHierarchicalTransform(
         model.meshCount - 1,
         meshRotations,
         pivotPoints);
 
-    Vector3 newPos = kinematics->GetGripperTransform(gripOffset);
-    newPos = Vector3Add(newPos, gripOffset);
+    // Dodaj offset chwytu do transformacji
+    Vector3 gripPoint = Vector3Add(pivotPoints[model.meshCount], gripOffset);
+    
+    // Najpierw przekształć punkt chwytu przez nieskalowaną transformację
+    Vector3 transformedGripPoint = Vector3Transform(gripPoint, gripperTransform);
+    
+    // Następnie zastosuj skalowanie do przekształconego punktu
+    Vector3 newPos = Vector3Scale(transformedGripPoint, scale);
 
-    Vector3 baseRotation = {
+    // Oblicz rotację z oryginalnej macierzy transformacji
+    Vector3 rotation = {
         -atan2f(gripperTransform.m9, gripperTransform.m10) * RAD2DEG,
         -atan2f(-gripperTransform.m8, sqrtf(gripperTransform.m9 * gripperTransform.m9 + gripperTransform.m10 * gripperTransform.m10)) * RAD2DEG,
-        -atan2f(gripperTransform.m4, gripperTransform.m0) * RAD2DEG};
+        -atan2f(gripperTransform.m4, gripperTransform.m0) * RAD2DEG
+    };
 
-    // Oblicz rotację
-    Vector3 finalRotation = Vector3Add(baseRotation, rotationOffset);
-    
-    // Oblicz offset pozycji wynikający z obrotu wokół nowego punktu
-    Matrix rotationMatrix = MatrixRotateXYZ({
-        finalRotation.x * DEG2RAD,
-        finalRotation.y * DEG2RAD,
-        finalRotation.z * DEG2RAD
-    });
-    
-    Vector3 rotatedOffset = Vector3Transform(gripOffset, rotationMatrix);
-    Vector3 positionOffset = Vector3Subtract(rotatedOffset, gripOffset);
-    
-    // Zastosuj rotację i skorygowaną pozycję
-    grippedObject->SetRotation(finalRotation);
-    grippedObject->SetPosition(Vector3Add(newPos, positionOffset));
+    // Ustaw pozycję i rotację obiektu
+    grippedObject->SetRotation(Vector3Add(rotation, rotationOffset));
+    newPos = Vector3Add(newPos, gripOffset);
+    grippedObject->SetPosition(newPos);
 }
 }
 
