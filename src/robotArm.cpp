@@ -1,5 +1,22 @@
 #include "robotArm.h"
 
+glm::vec3 ToGLM(const Vector3& v) {
+    return glm::vec3(v.x, v.y, v.z);
+}
+
+Vector3 FromGLM(const glm::vec3& v) {
+    return Vector3{v.x, v.y, v.z};
+}
+
+// Funkcja dla konwersji rotacji (zakładając że Vector3 przechowuje kąty Eulera)
+glm::quat ToGLMQuat(const Vector3& euler) {
+    return glm::quat(glm::vec3(euler.x, euler.y, euler.z));
+}
+
+Vector3 FromGLMQuat(const glm::quat& q) {
+    return Vector3{glm::eulerAngles(q).x, glm::eulerAngles(q).y, glm::eulerAngles(q).z};
+}
+
 RobotArm::RobotArm(const char *modelPath, Shader shader)
     : shader(shader), logWindow(LogWindow::GetInstance())
 {
@@ -88,6 +105,7 @@ void RobotArm::Draw()
     EndShaderMode();
     DrawTrajectory();
     DrawGripper();
+    DrawGripperDirection();
 }
 
 void RobotArm::DrawPivotPoints()
@@ -189,6 +207,19 @@ void RobotArm::DrawImGuiControls()
                 sprintf(label, "Joint %d", i);
                 ImGui::SliderFloat(label, &meshRotations[i].angle, -180.0f, 180.0f);
             }
+
+            Vector3 direction = kinematics->GetEndEffectorDirection();
+            ImGui::Text("Kierunek chwytaka:");
+            ImGui::Text("X: %.3f Y: %.3f Z: %.3f",
+                        direction.x,
+                        direction.y,
+                        direction.z);
+            ImGui::Text("Roll chwytaka: %.3f", GetEndEffectorRoll());
+            ImGui::Text("Euler chwytaka: X: %.3f Y: %.3f Z: %.3f",
+                        eulerAnglesObject.x,
+                        eulerAnglesObject.y,
+                        eulerAnglesObject.z);
+
             ImGui::TreePop();
         }
 
@@ -336,36 +367,42 @@ void RobotArm::Update()
         kinematics->SetTargetPosition(trajectoryPoints[index]);
         kinematics->SolveIK();
     }
-
-if (isGripping && grippedObject)
-{
-    // Pobierz transformację chwytaka
-    Matrix gripperTransform = kinematics->GetHierarchicalTransform(
-        model.meshCount - 1,
-        meshRotations,
-        pivotPoints);
-
-    // Dodaj offset chwytu do transformacji
-    Vector3 gripPoint = Vector3Add(pivotPoints[model.meshCount], gripOffset);
     
-    // Najpierw przekształć punkt chwytu przez nieskalowaną transformację
-    Vector3 transformedGripPoint = Vector3Transform(gripPoint, gripperTransform);
-    
-    // Następnie zastosuj skalowanie do przekształconego punktu
-    Vector3 newPos = Vector3Scale(transformedGripPoint, scale);
+    if (isGripping && grippedObject)
+    {
+        //Pobierz aktualnąpozycje obiektu
+        Vector3 objectPosition = grippedObject->GetPosition();
+        //pobierz aktualną rotację obiektu
+        Vector3 objectRotation = grippedObject->GetRotation();
 
-    // Oblicz rotację z oryginalnej macierzy transformacji
-    Vector3 rotation = {
-        -atan2f(gripperTransform.m9, gripperTransform.m10) * RAD2DEG,
-        -atan2f(-gripperTransform.m8, sqrtf(gripperTransform.m9 * gripperTransform.m9 + gripperTransform.m10 * gripperTransform.m10)) * RAD2DEG,
-        -atan2f(gripperTransform.m4, gripperTransform.m0) * RAD2DEG
-    };
+        // Pobierz kierunek chwytaka
+        Vector3 direction = kinematics->GetEndEffectorDirection();
+        float rotation_in_direction_axis = GetEndEffectorRoll();
 
-    // Ustaw pozycję i rotację obiektu
-    grippedObject->SetRotation(Vector3Add(rotation, rotationOffset));
-    newPos = Vector3Add(newPos, gripOffset);
-    grippedObject->SetPosition(newPos);
-}
+        glm::vec3 pivotPoint = ToGLM(gripperPosition);
+        glm::vec3 directionGLM = ToGLM(direction);
+
+        glm::mat4 transformMatrix = glm::mat4(1.0f);
+
+        transformMatrix = glm::translate(transformMatrix, pivotPoint);
+
+        transformMatrix = glm::rotate(transformMatrix, rotation_in_direction_axis, directionGLM);
+
+        glm::vec3 eulerAngles = glm::eulerAngles(glm::quat_cast(transformMatrix));
+
+        eulerAnglesObject = FromGLM(glm::degrees(eulerAngles));
+
+
+        //Aktualizuj rotację obiektu
+        
+
+        //Aktualizuj pozycję obiektu
+        Vector3 newObjectPosition = Vector3Add(gripperPosition, gripOffset);
+        grippedObject->SetPosition(newObjectPosition);
+        // grippedObject->SetRotation(FromGLMQuat(rotationQuat));
+    }
+
+
 }
 
 void RobotArm::SetScale(float newScale)
@@ -484,27 +521,13 @@ void RobotArm::GripObject()
             grippedObject = const_cast<Object3D *>(obj);
             isGripping = true;
 
-            // Zachowaj offset pozycji
             gripOffset = Vector3Subtract(objPos, gripperPosition);
-
-            // Zachowaj offset rotacji
-            Vector3 objRotation = obj->GetRotation();
-            Matrix gripperTransform = kinematics->GetHierarchicalTransform(
-                model.meshCount - 1,
-                meshRotations,
-                pivotPoints);
-            Vector3 gripperRotation = {
-                -atan2f(gripperTransform.m9, gripperTransform.m10) * RAD2DEG,
-                -atan2f(-gripperTransform.m8, sqrtf(gripperTransform.m9 * gripperTransform.m9 + gripperTransform.m10 * gripperTransform.m10)) * RAD2DEG,
-                -atan2f(gripperTransform.m4, gripperTransform.m0) * RAD2DEG};
-            rotationOffset = Vector3Subtract(objRotation, gripperRotation);
 
             logWindow.AddLog("Obiekt chwycony", LogLevel::Info);
             break;
         }
     }
 }
-
 void RobotArm::ReleaseObject()
 {
     if (!isGripping)
@@ -512,4 +535,23 @@ void RobotArm::ReleaseObject()
     grippedObject = nullptr;
     isGripping = false;
     logWindow.AddLog("Obiekt puszczony", LogLevel::Info);
+}
+
+void RobotArm::DrawGripperDirection()
+{
+    // Długość linii wskazującej kierunek
+    const float directionLineLength = gripperRadius * 4.0f * scale;
+
+    // Oblicz punkt końcowy linii
+    Vector3 direction = kinematics->GetEndEffectorDirection();
+    Vector3 scaledDirection = Vector3Scale(direction, directionLineLength);
+    Vector3 endPoint = Vector3Add(gripperPosition, scaledDirection);
+
+    // Narysuj linię
+    DrawLine3D(gripperPosition, endPoint, BLUE);
+}
+
+float RobotArm::GetEndEffectorRoll()
+{
+    return meshRotations[4].angle;
 }

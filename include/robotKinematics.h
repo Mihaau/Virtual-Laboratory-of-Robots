@@ -53,4 +53,5 @@ public:
     static Matrix GetHierarchicalTransform(int meshIndex, ArmRotation *rotations, Vector3 *pivots);
     InterpolationType GetInterpolationType() const { return interpolationType; }
     Vector3 GetGripperTransform(const Vector3& objectOffset) const;
+    Vector3 GetEndEffectorDirection();
 };

@@ -9,6 +9,9 @@
 #include "vector"
 #include "robotKinematics.h"
 #include "object3D.h"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 class RobotArm {
 private:
@@ -45,6 +48,7 @@ private:
 
         LogWindow& logWindow;
     const std::vector<Object3D*>* sceneObjects = nullptr;
+    Vector3 eulerAnglesObject;
 public:
     RobotArm(const char* modelPath, Shader shader);
     ~RobotArm();
@@ -77,5 +81,7 @@ public:
     bool CanGrip() const { return isColliding && !isGripping; }
     bool IsGripping() const { return isGripping; }
     void SetSceneObjects(const std::vector<Object3D*>& objects) { sceneObjects = &objects; }
+    void DrawGripperDirection();
+    float GetEndEffectorRoll();
     // void Reset();
 };

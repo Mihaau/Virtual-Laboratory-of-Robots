@@ -258,3 +258,27 @@ Vector3 RobotKinematics::GetGripperTransform(const Vector3& objectOffset) const 
     // Następnie dodajemy przeskalowany offset
     return Vector3Add(scaledGripperPos, scaledOffset);
 }
+
+Vector3 RobotKinematics::GetEndEffectorDirection() {
+    // Pobierz transformację dla ostatniego segmentu (chwytaka)
+    Matrix lastSegmentTransform = GetHierarchicalTransform(meshCount - 1, meshRotations, pivotPoints);
+    
+    // Wektor bazowy - zazwyczaj oś Z dla chwytaka (0,0,1)
+    Vector3 baseDirection = {-1.0f, 0.0f, 0.0f};
+    
+    // Transformuj wektor bazowy używając macierzy transformacji
+    Vector3 direction;
+    direction.x = baseDirection.x * lastSegmentTransform.m0 + 
+                 baseDirection.y * lastSegmentTransform.m4 + 
+                 baseDirection.z * lastSegmentTransform.m8;
+    direction.y = baseDirection.x * lastSegmentTransform.m1 + 
+                 baseDirection.y * lastSegmentTransform.m5 + 
+                 baseDirection.z * lastSegmentTransform.m9;
+    direction.z = baseDirection.x * lastSegmentTransform.m2 + 
+                 baseDirection.y * lastSegmentTransform.m6 + 
+                 baseDirection.z * lastSegmentTransform.m10;
+
+    
+    // Normalizuj wektor wynikowy
+    return Vector3Normalize(direction);
+}
