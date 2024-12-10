@@ -1,19 +1,23 @@
 #include "robotArm.h"
 
-glm::vec3 ToGLM(const Vector3& v) {
+glm::vec3 ToGLM(const Vector3 &v)
+{
     return glm::vec3(v.x, v.y, v.z);
 }
 
-Vector3 FromGLM(const glm::vec3& v) {
+Vector3 FromGLM(const glm::vec3 &v)
+{
     return Vector3{v.x, v.y, v.z};
 }
 
 // Funkcja dla konwersji rotacji (zakładając że Vector3 przechowuje kąty Eulera)
-glm::quat ToGLMQuat(const Vector3& euler) {
+glm::quat ToGLMQuat(const Vector3 &euler)
+{
     return glm::quat(glm::vec3(euler.x, euler.y, euler.z));
 }
 
-Vector3 FromGLMQuat(const glm::quat& q) {
+Vector3 FromGLMQuat(const glm::quat &q)
+{
     return Vector3{glm::eulerAngles(q).x, glm::eulerAngles(q).y, glm::eulerAngles(q).z};
 }
 
@@ -367,42 +371,51 @@ void RobotArm::Update()
         kinematics->SetTargetPosition(trajectoryPoints[index]);
         kinematics->SolveIK();
     }
-    
+
     if (isGripping && grippedObject)
     {
-        //Pobierz aktualnąpozycje obiektu
-        Vector3 objectPosition = grippedObject->GetPosition();
-        //pobierz aktualną rotację obiektu
-        Vector3 objectRotation = grippedObject->GetRotation();
+        // Pobierz aktualnąpozycje obiektu
+    Vector3 direction = kinematics->GetEndEffectorDirection();
+    float rotation_in_direction_axis = GetEndEffectorRoll();
 
-        // Pobierz kierunek chwytaka
-        Vector3 direction = kinematics->GetEndEffectorDirection();
-        float rotation_in_direction_axis = GetEndEffectorRoll();
-
-        glm::vec3 pivotPoint = ToGLM(gripperPosition);
-        glm::vec3 directionGLM = ToGLM(direction);
-
-        glm::mat4 transformMatrix = glm::mat4(1.0f);
-
-        transformMatrix = glm::translate(transformMatrix, pivotPoint);
-
-        transformMatrix = glm::rotate(transformMatrix, rotation_in_direction_axis, directionGLM);
-
-        glm::vec3 eulerAngles = glm::eulerAngles(glm::quat_cast(transformMatrix));
-
-        eulerAnglesObject = FromGLM(glm::degrees(eulerAngles));
-
-
-        //Aktualizuj rotację obiektu
-        
-
-        //Aktualizuj pozycję obiektu
-        Vector3 newObjectPosition = Vector3Add(gripperPosition, gripOffset);
-        grippedObject->SetPosition(newObjectPosition);
-        // grippedObject->SetRotation(FromGLMQuat(rotationQuat));
+    // Upewnij się, że wektor kierunku jest znormalizowany
+    glm::vec3 dir = glm::normalize(ToGLM(direction));
+    
+    // Oblicz wektor "up" (może być {0,1,0} jako domyślny)
+    glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+    
+    // Oblicz podstawowe wektory dla orientacji
+    glm::vec3 forward = dir;
+    glm::vec3 right = glm::normalize(glm::cross(up, forward));
+    up = glm::normalize(glm::cross(forward, right));
+    
+    // Utwórz macierz rotacji z wektorów bazowych
+    glm::mat3 baseRotation = glm::mat3(right, up, forward);
+    
+    // Dodaj rotację wokół osi forward
+    glm::mat4 additionalRotation = glm::rotate(
+        glm::mat4(1.0f), 
+        glm::radians(rotation_in_direction_axis), 
+        forward
+    );
+    
+    // Połącz rotacje
+    glm::mat4 finalRotation = glm::mat4(baseRotation) * additionalRotation;
+    
+    // Wyodrębnij kąty Eulera (w kolejności XYZ)
+    glm::vec3 eulerAngles = glm::degrees(glm::eulerAngles(glm::quat_cast(finalRotation)));
+    
+    // Normalizuj kąty do zakresu [-180, 180]
+    for (int i = 0; i < 3; i++) {
+        eulerAngles[i] = fmod(eulerAngles[i] + 180.0f, 360.0f) - 180.0f;
     }
-
-
+    
+    eulerAnglesObject = FromGLM(eulerAngles);
+    
+    // Zastosuj obliczone kąty do obiektu
+    grippedObject->SetRotation(FromGLM(eulerAngles));
+    grippedObject->SetPosition(gripperPosition);
+    }
 }
 
 void RobotArm::SetScale(float newScale)
