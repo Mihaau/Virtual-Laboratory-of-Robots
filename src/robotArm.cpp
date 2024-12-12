@@ -405,28 +405,42 @@ void RobotArm::Update()
         kinematics->SolveIK();
     }
 
-    if (isGripping && grippedObject)
-    {
-        // Pobierz aktualne wektory kierunku
-        Vector3 currentDirection = kinematics->GetEndEffectorDirection();
-        Vector3 currentUpDirection = kinematics->GetEndEffectorUpDirection();
-        
-        // Oblicz rotację bazową
-        Vector3 baseRotation = GetEulerAngles(baseDirection, baseUpDirection);
-        
-        // Oblicz aktualną rotację
-        Vector3 currentRotation = GetEulerAngles(currentDirection, currentUpDirection);
-        
-        // Oblicz różnicę rotacji
-        Vector3 rotationDiff;
-        rotationDiff.x = baseRotation.x - currentRotation.x;
-        rotationDiff.y = currentRotation.y - baseRotation.y;
-        rotationDiff.z = currentRotation.z - baseRotation.z;
-        
-        // Ustaw pozycję i rotację obiektu
-        grippedObject->SetRotation({rotationDiff.x, rotationDiff.y, rotationDiff.z});
-        grippedObject->SetPosition(gripperPosition);
-    }
+if (isGripping && grippedObject) {
+    // Pobierz aktualne wektory kierunku
+    Vector3 currentDirection = kinematics->GetEndEffectorDirection();
+    Vector3 currentUpDirection = kinematics->GetEndEffectorUpDirection();
+    
+    // Oblicz rotację bazową
+    Vector3 baseRotation = GetEulerAngles(baseDirection, baseUpDirection);
+    
+    // Oblicz aktualną rotację
+    Vector3 currentRotation = GetEulerAngles(currentDirection, currentUpDirection);
+    
+    // Oblicz różnicę rotacji
+    Vector3 rotationDiff;
+    rotationDiff.x = baseRotation.x - currentRotation.x;
+    rotationDiff.y = baseRotation.y - currentRotation.y;
+    rotationDiff.z = currentRotation.z - baseRotation.z;
+
+    // Zastosuj offset rotacji
+    Vector3 finalRotation = Vector3Add(rotationOffset, rotationDiff);
+    
+    // Transformuj offset względem nowej rotacji
+    Matrix rotationMatrix = MatrixRotateXYZ(
+        (Vector3){
+            rotationDiff.x * DEG2RAD,
+            rotationDiff.y * DEG2RAD,
+            rotationDiff.z * DEG2RAD
+        });
+    Vector3 transformedOffset = Vector3Transform(gripOffset, rotationMatrix);
+    
+    // Oblicz finalną pozycję uwzględniając transformowany offset
+    Vector3 finalPosition = Vector3Add(gripperPosition, transformedOffset);
+
+    // Ustaw pozycję i rotację obiektu
+    grippedObject->SetRotation(finalRotation);
+    grippedObject->SetPosition(finalPosition);
+}
 }
 
 void RobotArm::SetScale(float newScale)
