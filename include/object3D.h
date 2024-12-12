@@ -49,6 +49,7 @@ public:
     static void ProcessDeleteQueue();
     const std::string &GetModelPath() const { return modelPath; }
     Matrix GetTransform() const { return transformMatrix; }
+    void DrawObjectBoundingBox();
 
 private:
     Model model;
@@ -77,4 +78,5 @@ private:
 
     void UpdateTransformMatrix();
     Matrix transformMatrix;
+    bool showBoundingBox = false;
 };

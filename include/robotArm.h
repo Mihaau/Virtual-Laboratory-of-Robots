@@ -49,6 +49,8 @@ private:
         LogWindow& logWindow;
     const std::vector<Object3D*>* sceneObjects = nullptr;
     Vector3 eulerAnglesObject;
+    Vector3 baseDirection;
+    Vector3 baseUpDirection;
 public:
     RobotArm(const char* modelPath, Shader shader);
     ~RobotArm();

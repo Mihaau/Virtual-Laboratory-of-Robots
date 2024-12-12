@@ -72,6 +72,7 @@ void Object3D::Draw()
     DrawModel(model, Vector3Zero(), 1.0f, color);
 
     EndShaderMode();
+    DrawObjectBoundingBox();
 }
 
 Object3D *Object3D::Create(const char *modelPath, Shader shader)
@@ -113,6 +114,7 @@ void Object3D::DrawImGuiControls()
                 updated = true;
             ImGui::TreePop();
         }
+        ImGui::Checkbox("Show Bounding Box", &showBoundingBox);
 
         if (updated)
         {
@@ -125,4 +127,19 @@ void Object3D::DrawImGuiControls()
         }
     }
     ImGui::PopID();
+}
+
+void Object3D::DrawObjectBoundingBox()
+{
+    if (!showBoundingBox) return;
+
+    // Pobierz bounding box modelu
+    BoundingBox box = GetMeshBoundingBox(model.meshes[0]);
+    
+    // Przekształć bounding box zgodnie z transformacją obiektu
+    Vector3 min = Vector3Add(Vector3Scale(box.min, scale), position);
+    Vector3 max = Vector3Add(Vector3Scale(box.max, scale), position);
+    
+    // Użyj funkcji z Raylib do narysowania boundingboxa
+    ::DrawBoundingBox((BoundingBox){min, max}, YELLOW);
 }

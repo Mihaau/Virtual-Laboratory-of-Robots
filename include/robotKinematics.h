@@ -54,4 +54,5 @@ public:
     InterpolationType GetInterpolationType() const { return interpolationType; }
     Vector3 GetGripperTransform(const Vector3& objectOffset) const;
     Vector3 GetEndEffectorDirection();
+    Vector3 GetEndEffectorUpDirection();
 };

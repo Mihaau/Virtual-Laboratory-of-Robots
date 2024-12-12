@@ -174,34 +174,37 @@ void RobotKinematics::CalculateTrajectory() {
             }
             break;
 
-        case InterpolationType::PARABOLIC: {
-            // Istniejąca implementacja paraboliczna
-            float pathLength = Vector3Distance(startPos, endPos);
-            float heightOffset = pathLength * 0.5f;
-            float maxHeight = 0;
-            for(int i = 0; i <= meshCount; i++) {
-                Vector3 point = Vector3Transform(pivotPoints[i], 
-                    GetHierarchicalTransform(i-1, meshRotations, pivotPoints));
-                maxHeight = fmaxf(maxHeight, point.y);
-            }
-            
-            Vector3 midPoint = {
-                (startPos.x + endPos.x) * 0.5f,
-                fmaxf(maxHeight + heightOffset, ((startPos.y + endPos.y) * 0.5f + heightOffset)),
-                (startPos.z + endPos.z) * 0.5f
-            };
-            
-            for(int i = 0; i <= numPoints; i++) {
-                float t = i / (float)numPoints;
-                Vector3 point = {
-                    (1-t)*(1-t)*startPos.x + 2*(1-t)*t*midPoint.x + t*t*endPos.x,
-                    (1-t)*(1-t)*startPos.y + 2*(1-t)*t*midPoint.y + t*t*endPos.y,
-                    (1-t)*(1-t)*startPos.z + 2*(1-t)*t*midPoint.z + t*t*endPos.z
-                };
-                trajectoryPoints.push_back(point);
-            }
-            break;
-        }
+case InterpolationType::PARABOLIC: {
+    float pathLength = Vector3Distance(startPos, endPos);
+    // Skalujemy heightOffset proporcjonalnie do skali i długości ścieżki
+    float heightOffset = fminf(pathLength * 0.1f, 1.0f) * scale;
+    
+    float maxHeight = 0;
+    for(int i = 0; i <= meshCount; i++) {
+        Vector3 point = Vector3Transform(pivotPoints[i], 
+            GetHierarchicalTransform(i-1, meshRotations, pivotPoints));
+        // Skalujemy wysokość
+        maxHeight = fmaxf(maxHeight, point.y * scale);
+    }
+    
+    Vector3 midPoint = {
+        (startPos.x + endPos.x) * 0.5f,
+        // Używamy przeskalowanej wysokości
+        fmaxf(maxHeight + heightOffset, ((startPos.y + endPos.y) * 0.5f + 0.1f * scale)),
+        (startPos.z + endPos.z) * 0.5f
+    };
+    
+    for(int i = 0; i <= numPoints; i++) {
+        float t = i / (float)numPoints;
+        Vector3 point = {
+            (1-t)*(1-t)*startPos.x + 2*(1-t)*t*midPoint.x + t*t*endPos.x,
+            (1-t)*(1-t)*startPos.y + 2*(1-t)*t*midPoint.y + t*t*endPos.y,
+            (1-t)*(1-t)*startPos.z + 2*(1-t)*t*midPoint.z + t*t*endPos.z
+        };
+        trajectoryPoints.push_back(point);
+    }
+    break;
+}
 
         case InterpolationType::SPLINE: {
             // Cubic spline interpolation
@@ -265,6 +268,30 @@ Vector3 RobotKinematics::GetEndEffectorDirection() {
     
     // Wektor bazowy - zazwyczaj oś Z dla chwytaka (0,0,1)
     Vector3 baseDirection = {-1.0f, 0.0f, 0.0f};
+    
+    // Transformuj wektor bazowy używając macierzy transformacji
+    Vector3 direction;
+    direction.x = baseDirection.x * lastSegmentTransform.m0 + 
+                 baseDirection.y * lastSegmentTransform.m4 + 
+                 baseDirection.z * lastSegmentTransform.m8;
+    direction.y = baseDirection.x * lastSegmentTransform.m1 + 
+                 baseDirection.y * lastSegmentTransform.m5 + 
+                 baseDirection.z * lastSegmentTransform.m9;
+    direction.z = baseDirection.x * lastSegmentTransform.m2 + 
+                 baseDirection.y * lastSegmentTransform.m6 + 
+                 baseDirection.z * lastSegmentTransform.m10;
+
+    
+    // Normalizuj wektor wynikowy
+    return Vector3Normalize(direction);
+}
+
+    Vector3 RobotKinematics::GetEndEffectorUpDirection() {
+    // Pobierz transformację dla ostatniego segmentu (chwytaka)
+    Matrix lastSegmentTransform = GetHierarchicalTransform(meshCount - 1, meshRotations, pivotPoints);
+    
+    // Wektor bazowy - zazwyczaj oś Z dla chwytaka (0,0,1)
+    Vector3 baseDirection = {0.0f, 1.0f, 1.0f};
     
     // Transformuj wektor bazowy używając macierzy transformacji
     Vector3 direction;
