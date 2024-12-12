@@ -24,15 +24,15 @@ Vector3 FromGLMQuat(const glm::quat &q)
 Vector3 GetEulerAngles(const Vector3& direction, const Vector3& upDirection)
 {
     // Konwersja wektorów wejściowych na glm::vec3
-    glm::vec3 forward = glm::normalize(ToGLM(direction));
-    glm::vec3 right = glm::normalize(glm::cross(ToGLM(upDirection), forward));
-    glm::vec3 up = glm::cross(forward, right);
+    glm::vec3 x = glm::normalize(ToGLM(direction));
+    glm::vec3 y = glm::normalize(glm::cross(ToGLM(upDirection), x));
+    glm::vec3 z = glm::normalize(glm::cross(x, y));
 
     // Utworzenie macierzy rotacji z wektorów bazowych
     glm::mat3 rotMatrix;
-    rotMatrix[0] = right;   // pierwsza kolumna
-    rotMatrix[1] = up;      // druga kolumna
-    rotMatrix[2] = forward; // trzecia kolumna
+    rotMatrix[0] = x;
+    rotMatrix[1] = y;
+    rotMatrix[2] = z;
 
     // Konwersja macierzy na quaternion
     glm::quat rotation = glm::quat_cast(rotMatrix);
@@ -42,9 +42,6 @@ Vector3 GetEulerAngles(const Vector3& direction, const Vector3& upDirection)
     
     // Normalizacja kątów do zakresu [-180, 180]
     Vector3 angles = FromGLM(eulerAngles);
-    angles.x = fmod(angles.x + 180.0f, 360.0f) - 180.0f;
-    angles.y = fmod(angles.y + 180.0f, 360.0f) - 180.0f;
-    angles.z = fmod(angles.z + 180.0f, 360.0f) - 180.0f;
 
     return angles;
 }
@@ -242,12 +239,16 @@ void RobotArm::DrawImGuiControls()
             }
 
             Vector3 direction = kinematics->GetEndEffectorDirection();
+            Vector3 upDirection = kinematics->GetEndEffectorUpDirection();
             ImGui::Text("Kierunek chwytaka:");
             ImGui::Text("X: %.3f Y: %.3f Z: %.3f",
                         direction.x,
                         direction.y,
                         direction.z);
-            Vector3 upDirection = kinematics->GetEndEffectorUpDirection();
+            ImGui::Text("X: %.3f Y: %.3f Z: %.3f",
+                        upDirection.x,
+                        upDirection.y,
+                        upDirection.z);
             Vector3 euler = GetEulerAngles(direction, upDirection);
             ImGui::Text("Kąty Eulera:");
             ImGui::Text("X: %.3f Y: %.3f Z: %.3f",
@@ -418,12 +419,12 @@ void RobotArm::Update()
         
         // Oblicz różnicę rotacji
         Vector3 rotationDiff;
-        rotationDiff.x = currentRotation.x - baseRotation.x;
+        rotationDiff.x = baseRotation.x - currentRotation.x;
         rotationDiff.y = currentRotation.y - baseRotation.y;
         rotationDiff.z = currentRotation.z - baseRotation.z;
         
         // Ustaw pozycję i rotację obiektu
-        grippedObject->SetRotation({rotationDiff.y, rotationDiff.x, rotationDiff.z});
+        grippedObject->SetRotation({rotationDiff.x, rotationDiff.y, rotationDiff.z});
         grippedObject->SetPosition(gripperPosition);
     }
 }
@@ -547,6 +548,8 @@ void RobotArm::GripObject()
             gripOffset = Vector3Subtract(objPos, gripperPosition);
             baseDirection = kinematics->GetEndEffectorDirection();
             baseUpDirection = kinematics->GetEndEffectorUpDirection();
+            rotationOffset = obj->GetRotation();
+            
 
             logWindow.AddLog("Obiekt chwycony", LogLevel::Info);
             break;

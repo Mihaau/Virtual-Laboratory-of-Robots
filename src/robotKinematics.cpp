@@ -291,7 +291,7 @@ Vector3 RobotKinematics::GetEndEffectorDirection() {
     Matrix lastSegmentTransform = GetHierarchicalTransform(meshCount - 1, meshRotations, pivotPoints);
     
     // Wektor bazowy - zazwyczaj oś Z dla chwytaka (0,0,1)
-    Vector3 baseDirection = {0.0f, 1.0f, 1.0f};
+    Vector3 baseDirection = {0.0f, 1.0f, 0.0f};
     
     // Transformuj wektor bazowy używając macierzy transformacji
     Vector3 direction;
