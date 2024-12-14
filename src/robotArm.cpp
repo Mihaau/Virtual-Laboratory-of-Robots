@@ -21,42 +21,50 @@ Vector3 FromGLMQuat(const glm::quat &q)
     return Vector3{glm::eulerAngles(q).x, glm::eulerAngles(q).y, glm::eulerAngles(q).z};
 }
 
-Vector3 GetEulerAngles(const Vector3 &XDirection, const Vector3 &YDirection, const Vector3 &ZDirection)
+Vector3 GetEulerAngles(const Vector3& ZDirection, const Vector3& YDirection, const Vector3& XDirection) 
 {
+    glm::mat3 R = glm::mat3(ToGLM(XDirection), ToGLM(YDirection), ToGLM(ZDirection));
+    glm::quat q = glm::quat_cast(R);
+Vector3 angles =  FromGLM(glm::degrees(glm::eulerAngles(q)));
+return {angles.z, angles.y, angles.x};
+}
 
-    // Normalizacja wektorów wejściowych
-    glm::vec3 x = glm::normalize(ToGLM(XDirection));
-    glm::vec3 y = glm::normalize(ToGLM(YDirection));
-    glm::vec3 z = glm::normalize(ToGLM(ZDirection));
-
-    // Obliczenie kątów Eulera
-    float pitch = asin(-z.y);
-    float yaw = atan2(z.x, z.z);
-    float roll = atan2(x.y, y.y);
-
-    // Konwersja na stopnie za opmocą glm
-    glm::vec3 angles = glm::degrees(glm::vec3(pitch, yaw, roll));
-
-    // Konwersja na Vector3
-    return FromGLM(angles);
+Matrix CreateRotationMatrix(Vector3 rotation)
+{
+    Matrix rotMatrix = MatrixIdentity();
+    // Kolejność: Z -> Y -> X (intrinsic rotations)
+    rotMatrix = MatrixMultiply(rotMatrix, MatrixRotateZ(rotation.z * DEG2RAD));
+    rotMatrix = MatrixMultiply(rotMatrix, MatrixRotateY(rotation.y * DEG2RAD));
+    rotMatrix = MatrixMultiply(rotMatrix, MatrixRotateX(rotation.x * DEG2RAD));
+    return rotMatrix;
 }
 
 Vector3 CalculateStupidAngle(const Vector3 &XDirection, const Vector3 &YDirection, const Vector3 &ZDirection)
 {
-    // Normalizacja wektorów wejściowych
-    glm::vec3 x = glm::normalize(ToGLM(XDirection));
-    glm::vec3 y = glm::normalize(ToGLM(YDirection));
-    glm::vec3 z = glm::normalize(ToGLM(ZDirection));
+    // Normalizacja wektorów kierunkowych
+    Vector3 x = Vector3Normalize(XDirection);
+    Vector3 y = Vector3Normalize(YDirection);
+    Vector3 z = Vector3Normalize(ZDirection);
 
-    glm::mat3 R(x, y, z);
+    float yaw = 0.0f;   // obrót wokół osi Z
+    float pitch = 0.0f; // obrót wokół osi Y
+    float roll = 0.0f;  // obrót wokół osi X
 
-    // Obliczanie yaw (psi), pitch (theta), roll (phi)
-    float yaw = std::atan2(R[0][2], R[2][2]);  // atan2(R21, R11)
-    float pitch = std::asin(-R[1][2]);         // asin(-R31)
-    float roll = std::atan2(R[1][0], R[1][1]); // atan2(R32, R33)
+    // Obliczenie pitch (obrót wokół Y)
+    pitch = asin(-z.y);
 
-    // Zwracanie kątów w radianach
-    return FromGLM(glm::degrees(glm::vec3(yaw, pitch, roll)));
+    // Obliczenie yaw (obrót wokół Z)
+    yaw = atan2(x.y, y.y);
+
+    // Obliczenie roll (obrót wokół X)
+    roll = atan2(z.x, z.z);
+
+    // Konwersja z radianów na stopnie
+    yaw *= RAD2DEG;
+    pitch *= RAD2DEG;
+    roll *= RAD2DEG;
+
+    return Vector3{ roll, pitch, yaw };
 }
 
 Vector3 RotateVector(Vector3 vec, Vector3 rotation)
@@ -374,13 +382,10 @@ void RobotArm::DrawImGuiControls()
                         upDirection.x,
                         upDirection.y,
                         upDirection.z);
-            Vector3 euler = GetEulerAngles(direction, upDirection, sideDirection);
-            ImGui::Text("Kąty Eulera:");
             ImGui::Text("X: %.3f Y: %.3f Z: %.3f",
-                        euler.x,
-                        euler.y,
-                        euler.z);
-
+                        sideDirection.x,
+                        sideDirection.y,
+                        sideDirection.z);
             Vector3 stupidAngle = CalculateStupidAngle(direction, upDirection, sideDirection);
             ImGui::Text("Stupid Angle:");
             ImGui::Text("X: %.3f Y: %.3f Z: %.3f",
@@ -554,24 +559,32 @@ void RobotArm::Update()
 
     if (isGripping && grippedObject)
     {
-        // Pobierz aktualne wektory kierunku chwytaka
+        Vector3 EndEffectorPos = kinematics->CalculateEndEffectorPosition();
         Vector3 currentXVector = kinematics->GetEndEffectorDirection();
         Vector3 currentYVector = kinematics->GetEndEffectorUpDirection();
         Vector3 currentZVector = kinematics->GetEndEffectorSideDirection();
 
+        // Oblicz kąty Eulera
         Vector3 effectorRotation = CalculateStupidAngle(currentXVector, currentYVector, currentZVector);
-        effectorRotation.x = effectorRotation.x;
-        effectorRotation.y = effectorRotation.y;
-        effectorRotation.z = -effectorRotation.z;
 
-        grippedObject->SetGlobalRotation({effectorRotation.y, effectorRotation.x, effectorRotation.z});
+        // Zamień kolejność komponentów i dostosuj znaki
+        Vector3 finalRotation = {
+            effectorRotation.y, // pitch
+            effectorRotation.x, // yaw
+            -effectorRotation.z // roll
+        };
 
-        // Oblicz nową pozycję względem efektora
-        Vector3 EndEffectorPos = kinematics->CalculateEndEffectorPosition();
-        Vector3 rotatedOffset = RotateVector(originalGripOffset, {effectorRotation.y, effectorRotation.x, effectorRotation.z});
+        // Stwórz macierz rotacji dla aktualnej orientacji efektora
+        Matrix rotMatrix = CreateRotationMatrix(finalRotation);
+
+        // Przekształć oryginalny offset przez macierz rotacji
+        Vector3 rotatedOffset = Vector3Transform(originalGripOffset, rotMatrix);
+
+        // Oblicz finalną pozycję
         Vector3 finalPos = Vector3Add(EndEffectorPos, rotatedOffset);
 
-        // Ustaw pozycję jednorazowo
+        // Ustaw rotację i pozycję obiektu
+        grippedObject->SetGlobalRotation(finalRotation);
         grippedObject->SetPosition(finalPos);
     }
 }
@@ -691,13 +704,18 @@ void RobotArm::GripObject()
         {
             grippedObject = const_cast<Object3D *>(obj);
             isGripping = true;
+
+            // Zapisz początkową pozycję względem efektora
             Vector3 EndEffectorPos = kinematics->CalculateEndEffectorPosition();
-            originalGripOffset = Vector3Subtract(grippedObject->GetPosition(), EndEffectorPos);
-            gripOffset = Vector3Subtract(objPos, gripperPosition);
+            Vector3 objPos = grippedObject->GetPosition();
+
+            // Zapisz offset w lokalnym układzie współrzędnych efektora
+            originalGripOffset = Vector3Subtract(objPos, EndEffectorPos);
+
+            // Zapisz początkową orientację efektora
             baseDirection = kinematics->GetEndEffectorDirection();
             baseUpDirection = kinematics->GetEndEffectorUpDirection();
             baseSideDirection = kinematics->GetEndEffectorSideDirection();
-            rotationOffset = obj->GetRotation();
 
             logWindow.AddLog("Obiekt chwycony", LogLevel::Info);
             break;
