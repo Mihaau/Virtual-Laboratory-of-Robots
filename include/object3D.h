@@ -29,6 +29,18 @@ public:
         rotation = rot;
         UpdateTransformMatrix();
     }
+    void SetGlobalRotation(Vector3 newRot)
+
+    {
+        // Resetujemy aktualną rotację do zera
+        rotation = Vector3Zero();
+        UpdateTransformMatrix();
+
+        // Ustawiamy nową rotację bezwzględną
+        rotation = newRot;
+        UpdateTransformMatrix();
+    }
+
     void SetScale(float scl)
     {
         scale = scl;

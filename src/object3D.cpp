@@ -48,9 +48,9 @@ void Object3D::UpdateTransformMatrix()
     
     transformMatrix = MatrixIdentity();
     transformMatrix = MatrixMultiply(transformMatrix, scaleMatrix);
-    transformMatrix = MatrixMultiply(transformMatrix, rotationX);
-    transformMatrix = MatrixMultiply(transformMatrix, rotationY);
     transformMatrix = MatrixMultiply(transformMatrix, rotationZ);
+    transformMatrix = MatrixMultiply(transformMatrix, rotationY);
+    transformMatrix = MatrixMultiply(transformMatrix, rotationX);
     transformMatrix = MatrixMultiply(transformMatrix, translation);
 
 }

@@ -18,6 +18,11 @@ LuaController::LuaController(RobotArm& robot, LogWindow& log)
 void LuaController::RegisterFunctions() {
     lua_register(L, "setJointRotation", lua_setJointRotation);
     lua_register(L, "wait", lua_wait);
+    lua_register(L, "moveLinear", lua_moveLinear);
+    lua_register(L, "moveParabolic", lua_moveParabolic); 
+    lua_register(L, "moveSpline", lua_moveSpline);
+    lua_register(L, "gripObject", lua_gripObject);
+    lua_register(L, "releaseObject", lua_releaseObject);
 }
 
 int LuaController::lua_setJointRotation(lua_State* L) {
@@ -36,6 +41,58 @@ int LuaController::lua_setJointRotation(lua_State* L) {
 int LuaController::lua_wait(lua_State* L) {
     float seconds = lua_tonumber(L, 1);
     last_wait = seconds;
+    return lua_yield(L, 0);
+}
+
+int LuaController::lua_moveLinear(lua_State* L) {
+    float x = lua_tonumber(L, 1);
+    float y = lua_tonumber(L, 2);
+    float z = lua_tonumber(L, 3);
+
+    if(g_robotArm) {
+        g_robotArm->MoveTo({x,y,z}, InterpolationType::LINEAR);
+        last_wait = 1.0f; // Wait for animation
+    }
+    return lua_yield(L, 0);
+}
+
+int LuaController::lua_moveParabolic(lua_State* L) {
+    float x = lua_tonumber(L, 1);
+    float y = lua_tonumber(L, 2);
+    float z = lua_tonumber(L, 3);
+
+    if(g_robotArm) {
+        g_robotArm->MoveTo({x,y,z}, InterpolationType::PARABOLIC);
+        last_wait = 1.0f;
+    }
+    return lua_yield(L, 0);
+}
+
+int LuaController::lua_moveSpline(lua_State* L) {
+    float x = lua_tonumber(L, 1);
+    float y = lua_tonumber(L, 2);
+    float z = lua_tonumber(L, 3);
+
+    if(g_robotArm) {
+        g_robotArm->MoveTo({x,y,z}, InterpolationType::SPLINE);
+        last_wait = 1.0f;
+    }
+    return lua_yield(L, 0);
+}
+
+int LuaController::lua_gripObject(lua_State* L) {
+    if(g_robotArm) {
+        g_robotArm->GripObject();
+        last_wait = 0.5f; // Krótkie opóźnienie na animację chwytu
+    }
+    return lua_yield(L, 0);
+}
+
+int LuaController::lua_releaseObject(lua_State* L) {
+    if(g_robotArm) {
+        g_robotArm->ReleaseObject();
+        last_wait = 0.5f; // Krótkie opóźnienie na animację puszczenia
+    }
     return lua_yield(L, 0);
 }
 
@@ -153,7 +210,7 @@ void LuaController::Update(float deltaTime) {
         lua_Debug ar;
         if(lua_getstack(L, 0, &ar)) {
             lua_getinfo(L, "Snl", &ar);
-            std::string message = "Wykonano linię " + std::to_string(ar.currentline);
+            std::string message = "Wykonano krok";
             logWindow.AddLog(message.c_str(), LogLevel::Info);
         }
 

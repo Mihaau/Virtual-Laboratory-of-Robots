@@ -55,4 +55,6 @@ public:
     Vector3 GetGripperTransform(const Vector3& objectOffset) const;
     Vector3 GetEndEffectorDirection();
     Vector3 GetEndEffectorUpDirection();
+    Vector3 GetEndEffectorSideDirection();
+    Vector3 GetEndEffectorRotation();
 };

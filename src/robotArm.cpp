@@ -39,32 +39,36 @@ Matrix CreateRotationMatrix(Vector3 rotation)
     return rotMatrix;
 }
 
-Vector3 CalculateStupidAngle(const Vector3 &XDirection, const Vector3 &YDirection, const Vector3 &ZDirection)
-{
+Vector3 CalculateStupidAngle(const Vector3 &XDirection, const Vector3 &YDirection, const Vector3 &ZDirection) {
     // Normalizacja wektorów kierunkowych
     Vector3 x = Vector3Normalize(XDirection);
     Vector3 y = Vector3Normalize(YDirection);
     Vector3 z = Vector3Normalize(ZDirection);
 
-    float yaw = 0.0f;   // obrót wokół osi Z
-    float pitch = 0.0f; // obrót wokół osi Y
-    float roll = 0.0f;  // obrót wokół osi X
+    float yaw = 0.0f;   // obrót wokół osi Y (główna rotacja)
+    float pitch = 0.0f; // obrót wokół osi X
+    float roll = 0.0f;  // obrót wokół osi Z
 
-    // Obliczenie pitch (obrót wokół Y)
+    // Obliczenie pitch (obrót wokół X w konwencji YXZ)
     pitch = asin(-z.y);
 
-    // Obliczenie yaw (obrót wokół Z)
-    yaw = atan2(x.y, y.y);
+    // Sprawdzenie możliwego przecięcia kątów
+    if (fabs(z.y) < 0.9999f) {
+        // Standardowe przypadki
+        yaw = atan2(x.z, z.z);   // Obrót wokół Y
+        roll = atan2(y.x, y.y); // Obrót wokół Z
+    } else {
+        // Gimbal lock: ograniczenie kąta
+        yaw = atan2(-y.z, y.x);
+        roll = 0.0f;
+    }
 
-    // Obliczenie roll (obrót wokół X)
-    roll = atan2(z.x, z.z);
-
-    // Konwersja z radianów na stopnie
+    // Konwersja z radianów na stopnie (jeśli potrzebujesz wyników w stopniach)
     yaw *= RAD2DEG;
     pitch *= RAD2DEG;
     roll *= RAD2DEG;
 
-    return Vector3{ roll, pitch, yaw };
+    return Vector3{ yaw, pitch, roll };
 }
 
 Vector3 RotateVector(Vector3 vec, Vector3 rotation)
@@ -154,7 +158,7 @@ RobotArm::RobotArm(const char *modelPath, Shader shader)
     showTrajectory = false;
     isAnimating = false;
 
-    for (int i = 0; i < model.meshCount; i++)
+    for (int i = 0; i < model.meshCount + 1; i++)
     {
         meshVisibility[i] = true;
         meshRotations[i] = {0.0f, {0.0f, 1.0f, 0.0f}};
@@ -167,6 +171,8 @@ RobotArm::RobotArm(const char *modelPath, Shader shader)
     meshRotations[3].axis = {0.0f, 0.0f, 1.0f}; // Chwytak
     meshRotations[4].axis = {1.0f, 0.0f, 0.0f}; // Obrót chwytaka
     meshRotations[5].axis = {0.0f, 0.0f, 1.0f}; // Obrót chwytaka
+    meshRotations[6].axis = {1.0f, 0.0f, 0.0f}; // Obrót chwytaka
+
 
     pivotPoints = new Vector3[model.meshCount + 1];
 

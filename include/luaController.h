@@ -17,6 +17,11 @@ private:
     void RegisterFunctions();
     static int lua_setJointRotation(lua_State *L);
     static int lua_wait(lua_State *L);
+    static int lua_moveLinear(lua_State *L);
+    static int lua_moveParabolic(lua_State *L);
+    static int lua_moveSpline(lua_State *L);
+    static int lua_gripObject(lua_State *L);
+    static int lua_releaseObject(lua_State *L);
     static int last_joint;
     static float last_angle;
     static float last_wait;

@@ -94,7 +94,7 @@ bool SceneLoader::SaveScene(const std::string& filename, const std::vector<Objec
         j["objects"].push_back(objJson);
     }
 
-    std::string filepath = scenesPath + "/" + filename + ".scn";
+    std::string filepath = (std::filesystem::path(scenesPath) / (filename + ".scn")).string();
     std::ofstream file(filepath);
     file << j.dump(4);
     
@@ -112,7 +112,7 @@ bool SceneLoader::LoadScene(const std::string& filename, std::vector<Object3D*>&
 }
 
 bool SceneLoader::LoadSceneFile(const std::string& filename) {
-    std::string filepath = scenesPath + "/" + filename + ".scn";
+    std::string filepath = (std::filesystem::path(scenesPath) / (filename + ".scn")).string();
     std::ifstream file(filepath);
     
     if (!file.is_open()) {
@@ -150,13 +150,15 @@ bool SceneLoader::LoadSceneFile(const std::string& filename) {
 }
 
 void SceneLoader::UpdateObjects(std::vector<Object3D*>& objects, Shader& shader) {
-    for (auto* obj : objects) {
-        delete obj;
+    // Usuń istniejące obiekty
+    for (auto obj : objects) {
+        obj->markedForDeletion = true;
     }
     objects.clear();
     
+    // Dodaj nowe obiekty
     for (const auto& objData : currentScene.objects) {
-        Object3D* obj = Object3D::Create(objData.modelPath.c_str(), shader);
+        Object3D* obj = new Object3D(objData.modelPath.c_str(), shader);
         obj->SetPosition(objData.position);
         obj->SetRotation(objData.rotation); 
         obj->SetScale(objData.scale);

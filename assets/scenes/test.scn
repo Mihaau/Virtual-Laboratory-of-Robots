@@ -1,7 +1,7 @@
 {
     "objects": [
         {
-            "modelPath": "assets/models\\cat.glb",
+            "modelPath": "assets/models/cat.glb",
             "position": [
                 -3.0,
                 -0.699999988079071,

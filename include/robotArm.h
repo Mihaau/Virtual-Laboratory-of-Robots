@@ -51,6 +51,13 @@ private:
     Vector3 eulerAnglesObject;
     Vector3 baseDirection;
     Vector3 baseUpDirection;
+    Vector3 baseSideDirection;
+
+    Vector3 rotatedPoint;
+
+        bool isTracing = false;
+    std::vector<Vector3> tracePath;
+    Vector3 originalGripOffset;
 public:
     RobotArm(const char* modelPath, Shader shader);
     ~RobotArm();
@@ -85,5 +92,10 @@ public:
     void SetSceneObjects(const std::vector<Object3D*>& objects) { sceneObjects = &objects; }
     void DrawGripperDirection();
     float GetEndEffectorRoll();
+    void MoveTo(Vector3 target, InterpolationType type);
+
+        void StartTracing();
+    void StopTracing();
+    void ClearTrace(); 
     // void Reset();
 };

@@ -54,20 +54,22 @@ Matrix RobotKinematics::GetHierarchicalTransform(int meshIndex, ArmRotation* rot
 
 void RobotKinematics::SolveIK() {
  const float TOLERANCE = 0.001f;
-    const int MAX_ITERATIONS = 10;
+    const int MAX_ITERATIONS = 20;
     const float DAMPING = 0.1f; // Współczynnik tłumienia dla stabilności
     
     Vector3 basePos = Vector3Scale(pivotPoints[0], scale);
     Vector3 currentEndEffector = CalculateEndEffectorPosition();
     
     // Ograniczenia kątowe dla każdego przegubu (min, max)
-    const float jointLimits[6][2] = {
-        {-180.0f, 180.0f}, // Baza
-        {-90.0f, 90.0f},   // Ramię 1
-        {-120.0f, 120.0f}, // Ramię 2
-        {-120.0f, 120.0f}, // Ramię 3
-        {-180.0f, 180.0f}, // Ramię 4
-        {-90.0f, 90.0f}    // Chwytak
+    const float jointLimits[7][2] = {
+        {-180.0f , 180.0f }, // Baza ruch bazy jest wyłączony w IK
+        {-180.0f , 180.0f },   // waist
+        {-120.0f , 120.0f }, // shoulder
+        {-100.0f , 60.0f }, // elbow
+        {-200.0f , 200.0f }, // wrist twist
+        {-120.0f , 120.0f },//wrist pitch
+        {-180.0f , 180.0f }  // wrist roll
+
     };
 
     // Sprawdź osiągalność celu
@@ -85,7 +87,7 @@ void RobotKinematics::SolveIK() {
     for(int iter = 0; iter < MAX_ITERATIONS; iter++) {
         Vector3 prevEndEffector = CalculateEndEffectorPosition();
         
-        for(int i = 0; i < meshCount - 1; i++) {
+        for(int i = 1; i < meshCount - 1; i++) {
             Matrix currentTransform = GetHierarchicalTransform(i, meshRotations, pivotPoints);
             Vector3 jointPos = Vector3Transform(pivotPoints[i], currentTransform);
             jointPos = Vector3Scale(jointPos, scale);
@@ -308,4 +310,48 @@ Vector3 RobotKinematics::GetEndEffectorDirection() {
     
     // Normalizuj wektor wynikowy
     return Vector3Normalize(direction);
+}
+
+    Vector3 RobotKinematics::GetEndEffectorSideDirection() {
+    // Pobierz transformację dla ostatniego segmentu (chwytaka)
+    Matrix lastSegmentTransform = GetHierarchicalTransform(meshCount - 1, meshRotations, pivotPoints);
+    
+    // Wektor bazowy - zazwyczaj oś Z dla chwytaka (0,0,1)
+    Vector3 baseDirection = {0.0f, 0.0f, 1.0f};
+    
+    // Transformuj wektor bazowy używając macierzy transformacji
+    Vector3 direction;
+    direction.x = baseDirection.x * lastSegmentTransform.m0 + 
+                 baseDirection.y * lastSegmentTransform.m4 + 
+                 baseDirection.z * lastSegmentTransform.m8;
+    direction.y = baseDirection.x * lastSegmentTransform.m1 + 
+                 baseDirection.y * lastSegmentTransform.m5 + 
+                 baseDirection.z * lastSegmentTransform.m9;
+    direction.z = baseDirection.x * lastSegmentTransform.m2 + 
+                 baseDirection.y * lastSegmentTransform.m6 + 
+                 baseDirection.z * lastSegmentTransform.m10;
+
+    
+    // Normalizuj wektor wynikowy
+    return Vector3Normalize(direction);
+}
+
+Vector3 RobotKinematics::GetEndEffectorRotation() {
+    Matrix lastSegmentTransform = GetHierarchicalTransform(meshCount - 1, meshRotations, pivotPoints);
+    
+    // Wydobycie kątów Eulera z macierzy rotacji
+    Vector3 rotation;
+    
+    // pitch (obrót wokół X)
+    rotation.x = atan2f(lastSegmentTransform.m9, lastSegmentTransform.m10) * RAD2DEG;
+    
+    // yaw (obrót wokół Y)
+    float sy = sqrtf(lastSegmentTransform.m0 * lastSegmentTransform.m0 + 
+                     lastSegmentTransform.m4 * lastSegmentTransform.m4);
+    rotation.y = atan2f(-lastSegmentTransform.m8, sy) * RAD2DEG;
+    
+    // roll (obrót wokół Z)
+    rotation.z = atan2f(lastSegmentTransform.m4, lastSegmentTransform.m0) * RAD2DEG;
+    
+    return rotation;
 }

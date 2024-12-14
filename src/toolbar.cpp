@@ -8,8 +8,9 @@ ToolBar::ToolBar(float screenWidth)
     buttons = {
         {ICON_FA_PLAY, " Start", "Uruchom program", []() {}},
         {ICON_FA_PAUSE, " Pauza", "Wstrzymaj wykonywanie", []() {}},
-        {ICON_FA_FORWARD_STEP, " Krok", "Wykonaj jeden krok", []() {}},
-        {ICON_FA_ROTATE_RIGHT, " Reset", "Zresetuj program", []() {}}};
+        {ICON_FA_FORWARD_STEP, " Krok", "Wykonaj jeden krok", []() {}}
+        // {ICON_FA_ROTATE_RIGHT, " Reset", "Zresetuj program", []() {}}
+        };
 }
 
 void ToolBar::Draw()

@@ -1,0 +1,18 @@
+{
+    "objects": [
+        {
+            "modelPath": "assets/models/cat.glb",
+            "position": [
+                -2.4000000953674316,
+                2.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": 0.05999999865889549
+        }
+    ]
+}

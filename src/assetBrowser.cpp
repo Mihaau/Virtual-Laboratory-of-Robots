@@ -115,7 +115,21 @@ void AssetBrowser::GenerateThumbnail(AssetItem &item, bool shouldUnloadOldTextur
 
     for (int i = 0; i < item.model.materialCount; i++)
     {
-        item.model.materials[i].shader = shader;
+    // Użyj domyślnego shadera
+    Material defaultMaterial = LoadMaterialDefault();
+    // Skopiuj mapy i tekstury
+    defaultMaterial.maps[MATERIAL_MAP_DIFFUSE] = item.model.materials[i].maps[MATERIAL_MAP_DIFFUSE];
+    defaultMaterial.maps[MATERIAL_MAP_NORMAL] = item.model.materials[i].maps[MATERIAL_MAP_NORMAL];
+    defaultMaterial.maps[MATERIAL_MAP_SPECULAR] = item.model.materials[i].maps[MATERIAL_MAP_SPECULAR];
+    // Ustaw shader oświetlenia
+    defaultMaterial.shader = shader;
+    // Zachowaj parametry materiału związane z oświetleniem
+    defaultMaterial.maps[MATERIAL_MAP_DIFFUSE].color = item.model.materials[i].maps[MATERIAL_MAP_DIFFUSE].color;
+    defaultMaterial.maps[MATERIAL_MAP_DIFFUSE].value = item.model.materials[i].maps[MATERIAL_MAP_DIFFUSE].value;
+    // Ustaw pełną nieprzezroczystość
+    defaultMaterial.maps[MATERIAL_MAP_DIFFUSE].color.a = 255;
+    // Przypisz zmodyfikowany materiał
+    item.model.materials[i] = defaultMaterial;
     }
 
     // Użyj transformacji z konfiguracji

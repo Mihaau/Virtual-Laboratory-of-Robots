@@ -2,7 +2,7 @@
 #include "pickRobot.h"
 #include "imgui.h"
 
-PickRobot::PickRobot() {
+PickRobot::PickRobot( ) : selectedRobot(0) {
     ScanRobotsFolder();
 }
 
