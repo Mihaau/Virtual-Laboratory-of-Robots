@@ -1,4 +1,8 @@
 #include "robotArm.h"
+#include <fstream>
+#include <nlohmann/json.hpp>
+
+using json = nlohmann::json;
 
 glm::vec3 ToGLM(const Vector3 &v)
 {
@@ -21,12 +25,12 @@ Vector3 FromGLMQuat(const glm::quat &q)
     return Vector3{glm::eulerAngles(q).x, glm::eulerAngles(q).y, glm::eulerAngles(q).z};
 }
 
-Vector3 GetEulerAngles(const Vector3& ZDirection, const Vector3& YDirection, const Vector3& XDirection) 
+Vector3 GetEulerAngles(const Vector3 &ZDirection, const Vector3 &YDirection, const Vector3 &XDirection)
 {
     glm::mat3 R = glm::mat3(ToGLM(XDirection), ToGLM(YDirection), ToGLM(ZDirection));
     glm::quat q = glm::quat_cast(R);
-Vector3 angles =  FromGLM(glm::degrees(glm::eulerAngles(q)));
-return {angles.z, angles.y, angles.x};
+    Vector3 angles = FromGLM(glm::degrees(glm::eulerAngles(q)));
+    return {angles.z, angles.y, angles.x};
 }
 
 Matrix CreateRotationMatrix(Vector3 rotation)
@@ -39,7 +43,8 @@ Matrix CreateRotationMatrix(Vector3 rotation)
     return rotMatrix;
 }
 
-Vector3 CalculateStupidAngle(const Vector3 &XDirection, const Vector3 &YDirection, const Vector3 &ZDirection) {
+Vector3 CalculateStupidAngle(const Vector3 &XDirection, const Vector3 &YDirection, const Vector3 &ZDirection)
+{
     // Normalizacja wektorów kierunkowych
     Vector3 x = Vector3Normalize(XDirection);
     Vector3 y = Vector3Normalize(YDirection);
@@ -53,11 +58,14 @@ Vector3 CalculateStupidAngle(const Vector3 &XDirection, const Vector3 &YDirectio
     pitch = asin(-z.y);
 
     // Sprawdzenie możliwego przecięcia kątów
-    if (fabs(z.y) < 0.9999f) {
+    if (fabs(z.y) < 0.9999f)
+    {
         // Standardowe przypadki
-        yaw = atan2(x.z, z.z);   // Obrót wokół Y
+        yaw = atan2(x.z, z.z);  // Obrót wokół Y
         roll = atan2(y.x, y.y); // Obrót wokół Z
-    } else {
+    }
+    else
+    {
         // Gimbal lock: ograniczenie kąta
         yaw = atan2(-y.z, y.x);
         roll = 0.0f;
@@ -68,7 +76,7 @@ Vector3 CalculateStupidAngle(const Vector3 &XDirection, const Vector3 &YDirectio
     pitch *= RAD2DEG;
     roll *= RAD2DEG;
 
-    return Vector3{ yaw, pitch, roll };
+    return Vector3{yaw, pitch, roll};
 }
 
 Vector3 RotateVector(Vector3 vec, Vector3 rotation)
@@ -146,13 +154,33 @@ glm::vec3 axisAngleToEulerXYZ(glm::vec3 axis, float angle)
     return glm::degrees(glm::vec3(phi, theta, psi));
 }
 
-RobotArm::RobotArm(const char *modelPath, Shader shader)
+RobotArm::RobotArm(const char *modelPath, const char *configPath, Shader shader)
     : shader(shader), logWindow(LogWindow::GetInstance())
 {
+    // Wczytaj konfigurację z pliku JSON
+    std::ifstream configFile(configPath);
+    if (!configFile.is_open())
+    {
+        logWindow.AddLog(
+            ("Nie można otworzyć pliku konfiguracji: " + std::string(configPath)).c_str(),
+            LogLevel::Error);
+        return;
+    }
+
+    json config;
+    configFile >> config;
+
+    scale = config.value("model", json::object()).value("scale", 1.0f);
+    auto joints = config["joints"];
+    meshCount = joints.size();
+
     model = LoadModel(modelPath);
     meshVisibility = new bool[model.meshCount];
     meshRotations = new ArmRotation[model.meshCount];
-    scale = 0.01f;
+    pivotPoints = new Vector3[meshCount];
+    meshRotations = new ArmRotation[meshCount];
+    armLengths = new float[meshCount];
+
     color = WHITE;
     showPivotPoints = false;
     showTrajectory = false;
@@ -161,28 +189,41 @@ RobotArm::RobotArm(const char *modelPath, Shader shader)
     for (int i = 0; i < model.meshCount + 1; i++)
     {
         meshVisibility[i] = true;
-        meshRotations[i] = {0.0f, {0.0f, 1.0f, 0.0f}};
+        // meshRotations[i] = {0.0f, {0.0f, 1.0f, 0.0f}};
     }
 
-    // Ustaw osie obrotu dla poszczególnych części
-    meshRotations[0].axis = {0.0f, 1.0f, 0.0f}; // Baza
-    meshRotations[1].axis = {0.0f, 1.0f, 0.0f}; // Ramię 1
-    meshRotations[2].axis = {0.0f, 0.0f, 1.0f}; // Ramię 2
-    meshRotations[3].axis = {0.0f, 0.0f, 1.0f}; // Chwytak
-    meshRotations[4].axis = {1.0f, 0.0f, 0.0f}; // Obrót chwytaka
-    meshRotations[5].axis = {0.0f, 0.0f, 1.0f}; // Obrót chwytaka
-    meshRotations[6].axis = {1.0f, 0.0f, 0.0f}; // Obrót chwytaka
+    for (int i = 0; i < meshCount; ++i)
+    {
+        pivotPoints[i] = {
+            joints[i]["pivot"]["x"].get<float>(),
+            joints[i]["pivot"]["y"].get<float>(),
+            joints[i]["pivot"]["z"].get<float>()};
 
+        meshRotations[i].axis = {
+            joints[i]["axis"]["x"].get<float>(),
+            joints[i]["axis"]["y"].get<float>(),
+            joints[i]["axis"]["z"].get<float>()};
+        meshRotations[i].angle = 0.0f; // Kąt początkowy
+    }
 
-    pivotPoints = new Vector3[model.meshCount + 1];
+    // // Ustaw osie obrotu dla poszczególnych części
+    // meshRotations[0].axis = {0.0f, 1.0f, 0.0f}; // Baza
+    // meshRotations[1].axis = {0.0f, 1.0f, 0.0f}; // Ramię 1
+    // meshRotations[2].axis = {0.0f, 0.0f, 1.0f}; // Ramię 2
+    // meshRotations[3].axis = {0.0f, 0.0f, 1.0f}; // Chwytak
+    // meshRotations[4].axis = {1.0f, 0.0f, 0.0f}; // Obrót chwytaka
+    // meshRotations[5].axis = {0.0f, 0.0f, 1.0f}; // Obrót chwytaka
+    // meshRotations[6].axis = {1.0f, 0.0f, 0.0f}; // Obrót chwytaka
 
-    pivotPoints[0] = {0.0f, 0.0f, 0.0f};      // Baza
-    pivotPoints[1] = {0.0f, 100.0f, 0.0f};    // Punkt obrotu ramienia 1
-    pivotPoints[2] = {0.0f, 350.0f, 0.0f};    // Punkt obrotu ramienia 2
-    pivotPoints[3] = {0.0f, 660.0f, 0.0f};    // Punkt obrotu ramienia 3
-    pivotPoints[4] = {-58.0f, 708.0f, 0.0f};  // Punkt obrotu ramienia 4
-    pivotPoints[5] = {-338.0f, 708.0f, 0.0f}; // Punkt obrotu ramienia 5
-    pivotPoints[6] = {-426.0f, 708.0f, 0.0f}; // Punkt obrotu chwytaka
+    // pivotPoints = new Vector3[model.meshCount + 1];
+
+    // pivotPoints[0] = {0.0f, 0.0f, 0.0f};      // Baza
+    // pivotPoints[1] = {0.0f, 100.0f, 0.0f};    // Punkt obrotu ramienia 1
+    // pivotPoints[2] = {0.0f, 350.0f, 0.0f};    // Punkt obrotu ramienia 2
+    // pivotPoints[3] = {0.0f, 660.0f, 0.0f};    // Punkt obrotu ramienia 3
+    // pivotPoints[4] = {-58.0f, 708.0f, 0.0f};  // Punkt obrotu ramienia 4
+    // pivotPoints[5] = {-338.0f, 708.0f, 0.0f}; // Punkt obrotu ramienia 5
+    // pivotPoints[6] = {-426.0f, 708.0f, 0.0f}; // Punkt obrotu chwytaka
 
     armLengths = new float[model.meshCount + 1];
 
@@ -211,11 +252,11 @@ RobotArm::RobotArm(const char *modelPath, Shader shader)
 RobotArm::~RobotArm()
 {
     UnloadModel(model);
-    delete[] meshRotations;
-    delete[] meshVisibility;
     delete[] pivotPoints;
-    UnloadMaterial(defaultMaterial);
-    delete kinematics;
+    delete[] meshRotations;
+    delete[] armLengths;
+    delete[] meshVisibility;
+    // Zamknij stan Lua jeśli używany
     if (L)
         lua_close(L);
 }

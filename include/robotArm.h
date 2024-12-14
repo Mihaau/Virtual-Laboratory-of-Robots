@@ -58,8 +58,9 @@ private:
         bool isTracing = false;
     std::vector<Vector3> tracePath;
     Vector3 originalGripOffset;
+    int meshCount;
 public:
-    RobotArm(const char* modelPath, Shader shader);
+    RobotArm(const char* modelPath, const char* configPath, Shader shader);
     ~RobotArm();
 
     void Draw();

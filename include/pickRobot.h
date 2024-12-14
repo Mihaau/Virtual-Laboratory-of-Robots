@@ -24,4 +24,5 @@ public:
     std::string GetSelectedRobotPath() const;
     std::string GetSelectedConfigPath() const;
     bool IsRobotSelected() const { return selectedRobot >= 0; }
+    int GetSelectedRobotIndex() const { return selectedRobot; }
 };

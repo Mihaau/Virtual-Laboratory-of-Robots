@@ -110,9 +110,9 @@ int main()
     CameraController cameraController(10.0f, 10.0f, 10.0f);
 
     // Inicjalizacja ramienia robota
-    RobotArm robotArm("assets/models/robot.glb", shader);
-    robotArm.SetScale(0.005f);
-
+    PickRobot robotPicker;
+    RobotArm *robotArm = nullptr;
+    int previousSelectedRobot = -1;
     CodeEditor codeEditor;
     AssetBrowser assetBrowser;
     assetBrowser.onAddObjectToScene = [&shader, &sceneObjects](const char *modelPath)
@@ -129,7 +129,6 @@ int main()
     LightController lightController(shader);
 
     SceneLoader sceneLoader;
-    PickRobot pickRobot;
 
     sceneLoader.onSaveScene = [&sceneObjects, &sceneLoader](const std::string &filename)
     {
@@ -140,15 +139,16 @@ int main()
     {
         sceneLoader.LoadScene(filename, sceneObjects, shader);
     };
+    if (robotArm != nullptr)
+        robotArm->SetSceneObjects(sceneObjects);
 
-    robotArm.SetSceneObjects(sceneObjects);
+    LuaController luaController(*robotArm, logWindow);
 
-    LuaController luaController(robotArm, logWindow);
-
-    toolBar.SetStartCallback([&luaController, &codeEditor]()
+    toolBar.SetStartCallback([&luaController, &codeEditor, &robotArm, &sceneObjects]()
                              {
-    luaController.LoadScript(codeEditor.GetText());
-    luaController.SetStepMode(false);
+    if (robotArm != nullptr) {
+        robotArm->CheckCollisions(sceneObjects);
+    }
     luaController.Run(); });
 
     toolBar.SetPauseCallback([&luaController]()
@@ -227,16 +227,25 @@ int main()
 
         lightController.Update();
         BeginMode3D(cameraController.GetCamera());
-        robotArm.Update();
-        robotArm.CheckCollisions(sceneObjects);
-        robotArm.Draw();
+
+        if (robotArm != nullptr)
+        {
+            robotArm->Update();
+            robotArm->Draw();
+            robotArm->CheckCollisions(sceneObjects);
+            robotArm->DrawPivotPoints();
+        }
+
+        // robotArm.Update();
+        // robotArm.CheckCollisions(sceneObjects);
+        // robotArm.Draw();
         for (auto *obj : sceneObjects)
         {
             obj->Draw();
         }
         DrawGrid(10, 1.0f);
         DrawSphereWires(lightController.GetLight().position, 0.5f, 8, 8, YELLOW);
-        robotArm.DrawPivotPoints();
+        // robotArm.DrawPivotPoints();
 
         EndMode3D();
         EndTextureMode();
@@ -258,7 +267,8 @@ int main()
             if (ImGui::BeginTabItem("Debug"))
             {
                 cameraController.DrawImGuiControls();
-                robotArm.DrawImGuiControls();
+                if (robotArm != nullptr)
+                    robotArm->DrawImGuiControls();
 
                 lightController.DrawImGuiControls();
 
@@ -282,7 +292,25 @@ int main()
 
             if (ImGui::BeginTabItem("Roboty"))
             {
-                pickRobot.DrawImGuiControls();
+                robotPicker.DrawImGuiControls();
+
+                if (robotPicker.IsRobotSelected() && robotPicker.GetSelectedRobotIndex() != previousSelectedRobot)
+                {
+                    previousSelectedRobot = robotPicker.GetSelectedRobotIndex();
+
+                    // Załaduj wybrany model robota
+                    std::string robotModelPath = robotPicker.GetSelectedRobotPath();
+                    std::string robotConfigPath = robotPicker.GetSelectedConfigPath();
+
+                    // Usuń poprzedni obiekt robotArm jeśli istnieje
+                    if (robotArm != nullptr)
+                    {
+                        delete robotArm;
+                    }
+
+                    robotArm = new RobotArm(robotModelPath.c_str(), robotConfigPath.c_str(), shader);
+                }
+
                 ImGui::EndTabItem();
             }
 
