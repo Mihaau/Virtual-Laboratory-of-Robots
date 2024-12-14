@@ -21,31 +21,118 @@ Vector3 FromGLMQuat(const glm::quat &q)
     return Vector3{glm::eulerAngles(q).x, glm::eulerAngles(q).y, glm::eulerAngles(q).z};
 }
 
-Vector3 GetEulerAngles(const Vector3& direction, const Vector3& upDirection)
+Vector3 GetEulerAngles(const Vector3 &XDirection, const Vector3 &YDirection, const Vector3 &ZDirection)
 {
-    // Konwersja wektorów wejściowych na glm::vec3
-    glm::vec3 x = glm::normalize(ToGLM(direction));
-    glm::vec3 y = glm::normalize(glm::cross(ToGLM(upDirection), x));
-    glm::vec3 z = glm::normalize(glm::cross(x, y));
 
-    // Utworzenie macierzy rotacji z wektorów bazowych
-    glm::mat3 rotMatrix;
-    rotMatrix[0] = x;
-    rotMatrix[1] = y;
-    rotMatrix[2] = z;
+    // Normalizacja wektorów wejściowych
+    glm::vec3 x = glm::normalize(ToGLM(XDirection));
+    glm::vec3 y = glm::normalize(ToGLM(YDirection));
+    glm::vec3 z = glm::normalize(ToGLM(ZDirection));
 
-    // Konwersja macierzy na quaternion
-    glm::quat rotation = glm::quat_cast(rotMatrix);
-    
-    // Konwersja quaterniona na kąty Eulera (w radianach)
-    glm::vec3 eulerAngles = glm::degrees(glm::eulerAngles(rotation));
-    
-    // Normalizacja kątów do zakresu [-180, 180]
-    Vector3 angles = FromGLM(eulerAngles);
+    // Obliczenie kątów Eulera
+    float pitch = asin(-z.y);
+    float yaw = atan2(z.x, z.z);
+    float roll = atan2(x.y, y.y);
 
-    return angles;
+    // Konwersja na stopnie za opmocą glm
+    glm::vec3 angles = glm::degrees(glm::vec3(pitch, yaw, roll));
+
+    // Konwersja na Vector3
+    return FromGLM(angles);
 }
 
+Vector3 CalculateStupidAngle(const Vector3 &XDirection, const Vector3 &YDirection, const Vector3 &ZDirection)
+{
+    // Normalizacja wektorów wejściowych
+    glm::vec3 x = glm::normalize(ToGLM(XDirection));
+    glm::vec3 y = glm::normalize(ToGLM(YDirection));
+    glm::vec3 z = glm::normalize(ToGLM(ZDirection));
+
+    glm::mat3 R(x, y, z);
+
+    // Obliczanie yaw (psi), pitch (theta), roll (phi)
+    float yaw = std::atan2(R[0][2], R[2][2]);  // atan2(R21, R11)
+    float pitch = std::asin(-R[1][2]);         // asin(-R31)
+    float roll = std::atan2(R[1][0], R[1][1]); // atan2(R32, R33)
+
+    // Zwracanie kątów w radianach
+    return FromGLM(glm::degrees(glm::vec3(yaw, pitch, roll)));
+}
+
+Vector3 RotateVector(Vector3 vec, Vector3 rotation)
+{
+    Matrix rotX = MatrixRotateX(rotation.x * DEG2RAD);
+    Matrix rotY = MatrixRotateY(rotation.y * DEG2RAD);
+    Matrix rotZ = MatrixRotateZ(rotation.z * DEG2RAD);
+
+    Matrix rotationMatrix = MatrixMultiply(MatrixMultiply(rotX, rotY), rotZ);
+    return Vector3Transform(vec, rotationMatrix);
+}
+
+glm::vec3 rotatePointAroundPivot(
+    const glm::vec3 &point,   // Punkt który obracamy
+    const glm::vec3 &pivot,   // Punkt wokół którego obracamy
+    const glm::vec3 &rotation // Kąty rotacji w stopniach dla osi X, Y, Z
+)
+{
+    // Przesunięcie do początku układu współrzędnych
+    glm::vec3 translated = point - pivot;
+
+    // Konwersja kątów ze stopni na radiany
+    glm::vec3 rotationRad = glm::radians(rotation);
+
+    // Utworzenie macierzy rotacji dla każdej osi
+    glm::mat4 rotationMatrix = glm::mat4(1.0f);
+    rotationMatrix = glm::rotate(rotationMatrix, rotationRad.x, glm::vec3(1, 0, 0)); // obrót X
+    rotationMatrix = glm::rotate(rotationMatrix, rotationRad.y, glm::vec3(0, 1, 0)); // obrót Y
+    rotationMatrix = glm::rotate(rotationMatrix, rotationRad.z, glm::vec3(0, 0, 1)); // obrót Z
+
+    // Aplikowanie rotacji
+    glm::vec4 rotated = rotationMatrix * glm::vec4(translated, 1.0f);
+
+    // Przesunięcie z powrotem i zwrócenie wyniku
+    return glm::vec3(rotated) + pivot;
+}
+
+glm::vec3 axisAngleToEulerXYZ(glm::vec3 axis, float angle)
+{
+    // Normalize the axis
+    axis = glm::normalize(axis);
+    float x = axis.x, y = axis.y, z = axis.z;
+
+    // Compute rotation matrix using Rodrigues' formula
+    float c = cos(angle);
+    float s = sin(angle);
+    float t = 1 - c;
+
+    glm::mat3 R = glm::mat3(
+        t * x * x + c, t * x * y - s * z, t * x * z + s * y,
+        t * x * y + s * z, t * y * y + c, t * y * z - s * x,
+        t * x * z - s * y, t * y * z + s * x, t * z * z + c);
+
+    // Extract Euler angles (XYZ convention)
+    float theta, phi, psi;
+    if (glm::abs(R[2][0] - 1.0f) < glm::epsilon<float>())
+    {
+        theta = -glm::half_pi<float>();
+        phi = 0;
+        psi = atan2(-R[0][1], -R[0][2]);
+    }
+    else if (glm::abs(R[2][0] + 1.0f) < glm::epsilon<float>())
+    {
+        theta = glm::half_pi<float>();
+        phi = 0;
+        psi = atan2(R[0][1], R[0][2]);
+    }
+    else
+    {
+        theta = asin(-R[2][0]);
+        phi = atan2(R[2][1], R[2][2]);
+        psi = atan2(R[1][0], R[0][0]);
+    }
+
+    return glm::degrees(glm::vec3(phi, theta, psi));
+}
 
 RobotArm::RobotArm(const char *modelPath, Shader shader)
     : shader(shader), logWindow(LogWindow::GetInstance())
@@ -102,6 +189,9 @@ RobotArm::RobotArm(const char *modelPath, Shader shader)
     gripperRadius = 20.0f;
     isColliding = false;
     gripperColor = GREEN;
+    baseDirection = kinematics->GetEndEffectorDirection();
+    baseUpDirection = kinematics->GetEndEffectorUpDirection();
+    baseSideDirection = kinematics->GetEndEffectorSideDirection();
 }
 
 RobotArm::~RobotArm()
@@ -136,6 +226,15 @@ void RobotArm::Draw()
     DrawTrajectory();
     DrawGripper();
     DrawGripperDirection();
+    // draw rotatedpoint
+    DrawSphere(rotatedPoint, 0.1f, RED);
+    if (!tracePath.empty())
+    {
+        for (size_t i = 0; i < tracePath.size() - 1; i++)
+        {
+            DrawLine3D(tracePath[i], tracePath[i + 1], PURPLE);
+        }
+    }
 }
 
 void RobotArm::DrawPivotPoints()
@@ -218,6 +317,31 @@ void RobotArm::DrawImGuiControls()
 
             ImGui::TreePop();
         }
+        if (ImGui::TreeNode("Path Tracing"))
+        {
+            if (!isTracing)
+            {
+                if (ImGui::Button("Start Tracing"))
+                {
+                    StartTracing();
+                }
+            }
+            else
+            {
+                if (ImGui::Button("Stop Tracing"))
+                {
+                    StopTracing();
+                }
+            }
+
+            if (ImGui::Button("Clear Trace"))
+            {
+                ClearTrace();
+            }
+
+            ImGui::Text("Path points: %d", tracePath.size());
+            ImGui::TreePop();
+        }
         if (ImGui::TreeNode("Mesh Visibility"))
         {
             for (int i = 0; i < model.meshCount; i++)
@@ -240,6 +364,7 @@ void RobotArm::DrawImGuiControls()
 
             Vector3 direction = kinematics->GetEndEffectorDirection();
             Vector3 upDirection = kinematics->GetEndEffectorUpDirection();
+            Vector3 sideDirection = kinematics->GetEndEffectorSideDirection();
             ImGui::Text("Kierunek chwytaka:");
             ImGui::Text("X: %.3f Y: %.3f Z: %.3f",
                         direction.x,
@@ -249,13 +374,23 @@ void RobotArm::DrawImGuiControls()
                         upDirection.x,
                         upDirection.y,
                         upDirection.z);
-            Vector3 euler = GetEulerAngles(direction, upDirection);
+            Vector3 euler = GetEulerAngles(direction, upDirection, sideDirection);
             ImGui::Text("Kąty Eulera:");
             ImGui::Text("X: %.3f Y: %.3f Z: %.3f",
                         euler.x,
                         euler.y,
                         euler.z);
 
+            Vector3 stupidAngle = CalculateStupidAngle(direction, upDirection, sideDirection);
+            ImGui::Text("Stupid Angle:");
+            ImGui::Text("X: %.3f Y: %.3f Z: %.3f",
+                        stupidAngle.x,
+                        stupidAngle.y,
+                        stupidAngle.z);
+            ImGui::Text("rotatedPoint: X: %.3f Y: %.3f Z: %.3f",
+                        rotatedPoint.x,
+                        rotatedPoint.y,
+                        rotatedPoint.z);
 
             ImGui::TreePop();
         }
@@ -389,58 +524,56 @@ void RobotArm::Update()
     if (isAnimating && !trajectoryPoints.empty())
     {
         animationTime += GetFrameTime();
-
         float t = animationTime / ANIMATION_DURATION;
 
         if (t >= 1.0f)
         {
             isAnimating = false;
             t = 1.0f;
+            // Ustaw końcową pozycję
+            kinematics->SetTargetPosition(trajectoryPoints.back());
         }
-
-        int index = (int)(t * (trajectoryPoints.size() - 1));
-        index = Clamp(index, 0, trajectoryPoints.size() - 2);
-
-        kinematics->SetTargetPosition(trajectoryPoints[index]);
+        else
+        {
+            // Interpolacja między punktami trajektorii
+            int index = (int)(t * (trajectoryPoints.size() - 1));
+            index = Clamp(index, 0, trajectoryPoints.size() - 2);
+            kinematics->SetTargetPosition(trajectoryPoints[index]);
+        }
         kinematics->SolveIK();
     }
 
-if (isGripping && grippedObject) {
-    // Pobierz aktualne wektory kierunku
-    Vector3 currentDirection = kinematics->GetEndEffectorDirection();
-    Vector3 currentUpDirection = kinematics->GetEndEffectorUpDirection();
-    
-    // Oblicz rotację bazową
-    Vector3 baseRotation = GetEulerAngles(baseDirection, baseUpDirection);
-    
-    // Oblicz aktualną rotację
-    Vector3 currentRotation = GetEulerAngles(currentDirection, currentUpDirection);
-    
-    // Oblicz różnicę rotacji
-    Vector3 rotationDiff;
-    rotationDiff.x = baseRotation.x - currentRotation.x;
-    rotationDiff.y = baseRotation.y - currentRotation.y;
-    rotationDiff.z = currentRotation.z - baseRotation.z;
+    if (isTracing)
+    {
+        // Dodaj tylko jeśli pozycja się zmieniła
+        if (tracePath.empty() || Vector3Distance(tracePath.back(), gripperPosition) > 0.01f)
+        {
+            tracePath.push_back(gripperPosition);
+        }
+    }
 
-    // Zastosuj offset rotacji
-    Vector3 finalRotation = Vector3Add(rotationOffset, rotationDiff);
-    
-    // Transformuj offset względem nowej rotacji
-    Matrix rotationMatrix = MatrixRotateXYZ(
-        (Vector3){
-            rotationDiff.x * DEG2RAD,
-            rotationDiff.y * DEG2RAD,
-            rotationDiff.z * DEG2RAD
-        });
-    Vector3 transformedOffset = Vector3Transform(gripOffset, rotationMatrix);
-    
-    // Oblicz finalną pozycję uwzględniając transformowany offset
-    Vector3 finalPosition = Vector3Add(gripperPosition, transformedOffset);
+    if (isGripping && grippedObject)
+    {
+        // Pobierz aktualne wektory kierunku chwytaka
+        Vector3 currentXVector = kinematics->GetEndEffectorDirection();
+        Vector3 currentYVector = kinematics->GetEndEffectorUpDirection();
+        Vector3 currentZVector = kinematics->GetEndEffectorSideDirection();
 
-    // Ustaw pozycję i rotację obiektu
-    grippedObject->SetRotation(finalRotation);
-    grippedObject->SetPosition(finalPosition);
-}
+        Vector3 effectorRotation = CalculateStupidAngle(currentXVector, currentYVector, currentZVector);
+        effectorRotation.x = effectorRotation.x;
+        effectorRotation.y = effectorRotation.y;
+        effectorRotation.z = -effectorRotation.z;
+
+        grippedObject->SetGlobalRotation({effectorRotation.y, effectorRotation.x, effectorRotation.z});
+
+        // Oblicz nową pozycję względem efektora
+        Vector3 EndEffectorPos = kinematics->CalculateEndEffectorPosition();
+        Vector3 rotatedOffset = RotateVector(originalGripOffset, {effectorRotation.y, effectorRotation.x, effectorRotation.z});
+        Vector3 finalPos = Vector3Add(EndEffectorPos, rotatedOffset);
+
+        // Ustaw pozycję jednorazowo
+        grippedObject->SetPosition(finalPos);
+    }
 }
 
 void RobotArm::SetScale(float newScale)
@@ -558,12 +691,13 @@ void RobotArm::GripObject()
         {
             grippedObject = const_cast<Object3D *>(obj);
             isGripping = true;
-
+            Vector3 EndEffectorPos = kinematics->CalculateEndEffectorPosition();
+            originalGripOffset = Vector3Subtract(grippedObject->GetPosition(), EndEffectorPos);
             gripOffset = Vector3Subtract(objPos, gripperPosition);
             baseDirection = kinematics->GetEndEffectorDirection();
             baseUpDirection = kinematics->GetEndEffectorUpDirection();
+            baseSideDirection = kinematics->GetEndEffectorSideDirection();
             rotationOffset = obj->GetRotation();
-            
 
             logWindow.AddLog("Obiekt chwycony", LogLevel::Info);
             break;
@@ -587,17 +721,49 @@ void RobotArm::DrawGripperDirection()
     // Oblicz punkt końcowy linii
     Vector3 direction = kinematics->GetEndEffectorDirection();
     Vector3 upDirection = kinematics->GetEndEffectorUpDirection();
+    Vector3 sideDirection = kinematics->GetEndEffectorSideDirection();
     Vector3 scaledUpDirection = Vector3Scale(upDirection, directionLineLength);
     Vector3 scaledDirection = Vector3Scale(direction, directionLineLength);
     Vector3 endPoint = Vector3Add(gripperPosition, scaledDirection);
     Vector3 endPointUp = Vector3Add(gripperPosition, scaledUpDirection);
+    Vector3 endPointSide = Vector3Add(gripperPosition, Vector3Scale(sideDirection, directionLineLength));
 
     // Narysuj linię
     DrawLine3D(gripperPosition, endPoint, BLUE);
     DrawLine3D(gripperPosition, endPointUp, ORANGE);
+    DrawLine3D(gripperPosition, endPointSide, GREEN);
 }
 
 float RobotArm::GetEndEffectorRoll()
 {
     return meshRotations[4].angle;
+}
+
+void RobotArm::MoveTo(Vector3 target, InterpolationType type)
+{
+    kinematics->SetInterpolationType(type);
+    kinematics->SetTargetPosition(target);
+    kinematics->CalculateTrajectory();
+
+    // Rozpocznij animację
+    isAnimating = true;
+    animationTime = 0.0f;
+}
+
+void RobotArm::StartTracing()
+{
+    isTracing = true;
+    logWindow.AddLog("Rozpoczęto rysowanie ścieżki", LogLevel::Info);
+}
+
+void RobotArm::StopTracing()
+{
+    isTracing = false;
+    logWindow.AddLog("Zatrzymano rysowanie ścieżki", LogLevel::Info);
+}
+
+void RobotArm::ClearTrace()
+{
+    tracePath.clear();
+    logWindow.AddLog("Wyczyszczono ścieżkę", LogLevel::Info);
 }
