@@ -4,16 +4,24 @@ int LuaController::last_joint = 0;
 float LuaController::last_angle = 0.0f; 
 float LuaController::last_wait = 0.0f;
 
-static RobotArm* g_robotArm = nullptr;
+RobotArm* LuaController::g_robotArm = nullptr;
 
 LuaController::LuaController(RobotArm& robot, LogWindow& log) 
-    : robotArm(robot), logWindow(log), isRunning(false), stepMode(false), currentLine(0) {
+    : robotArm(robot), logWindow(log), isRunning(false), 
+      stepMode(false), currentLine(0), mainThread(nullptr) {
     
-    L = luaL_newstate();
-    luaL_openlibs(L);
-    g_robotArm = &robot; // Zapisz referencję globalnie
+    g_robotArm = &robot;
+    InitLuaState();
+}
+void LuaController::InitLuaState() {
+    if (mainThread) lua_close(mainThread);
+    
+    mainThread = luaL_newstate();
+    luaL_openlibs(mainThread);
+    L = mainThread;  // L będzie aktualnym wątkiem wykonawczym
     RegisterFunctions();
 }
+
 
 void LuaController::RegisterFunctions() {
     lua_register(L, "setJointRotation", lua_setJointRotation);
@@ -97,21 +105,20 @@ int LuaController::lua_releaseObject(lua_State* L) {
 }
 
 LuaController::~LuaController() {
-    if(L) {
-        lua_close(L);
+    if (mainThread) {
+        lua_close(mainThread);
+        mainThread = nullptr;
+        L = nullptr;
     }
     g_robotArm = nullptr;
 }
 
 void LuaController::LoadScript(const std::string& code) {
     Stop();
-    if(L) lua_close(L);
+    ResetLuaState();
     
     L = luaL_newstate();
-    luaL_openlibs(L);
-    RegisterFunctions();
-    
-    // Zapisz wskaźnik this w registry Lua
+    luaL_openlibs(L);ResetLuaState();
     lua_pushlightuserdata(L, this);
     lua_setfield(L, LUA_REGISTRYINDEX, "LuaController");
     
@@ -147,6 +154,7 @@ void LuaController::Run() {
 void LuaController::Stop() {
     if(isRunning) {
         isRunning = false;
+        ResetLuaState();
         logWindow.AddLog("Program zatrzymany", LogLevel::Info);
     }
 }

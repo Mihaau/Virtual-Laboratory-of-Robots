@@ -115,6 +115,7 @@ int main()
     int previousSelectedRobot = -1;
     CodeEditor codeEditor;
     AssetBrowser assetBrowser;
+    LuaController *luaController = nullptr;
     assetBrowser.onAddObjectToScene = [&shader, &sceneObjects](const char *modelPath)
     {
         Object3D *obj = Object3D::Create(modelPath, shader);
@@ -142,30 +143,36 @@ int main()
     if (robotArm != nullptr)
         robotArm->SetSceneObjects(sceneObjects);
 
-    LuaController luaController(*robotArm, logWindow);
+    // LuaController luaController(*robotArm, logWindow);
 
-    toolBar.SetStartCallback([&luaController, &codeEditor, &robotArm, &sceneObjects]()
-                             {
-    if (robotArm != nullptr) {
-        robotArm->CheckCollisions(sceneObjects);
-    }
-    luaController.Run(); });
+    // toolBar.SetStartCallback([luaController, &codeEditor, &robotArm, &sceneObjects]()
+    //                          {
+    // if (robotArm != nullptr) {
+    //     robotArm->CheckCollisions(sceneObjects);
+    // }
+    // luaController.Run(); });
 
-    toolBar.SetPauseCallback([&luaController]()
-                             { luaController.Stop(); });
+    // toolBar.SetPauseCallback([luaController]()
+    //                          { luaController.Stop(); });
 
-    toolBar.SetStepCallback([&luaController, &codeEditor, &logWindow]()
-                            {
-    if(!luaController.IsRunning()) {
-        std::string code = codeEditor.GetText();
-        logWindow.AddLog("Wczytywanie skryptu...", LogLevel::Info);
-        logWindow.AddLog(code.c_str(), LogLevel::Info); // Pokaż zawartość skryptu
-        
-        luaController.LoadScript(code);
-        luaController.SetStepMode(true);
-        luaController.Run();
-    }
-    luaController.Step(); });
+    // toolBar.SetStepCallback([luaController, &codeEditor, &logWindow]()
+    //                         {
+    // if(!luaController.IsRunning()) {
+    //     std::string code = codeEditor.GetText();
+    //     logWindow.AddLog("Wczytywanie skryptu...", LogLevel::Info);
+    //     logWindow.AddLog(code.c_str(), LogLevel::Info); // Pokaż zawartość skryptu
+
+    //     luaController.LoadScript(code);
+    //     luaController.SetStepMode(true);
+    //     luaController.Run();
+    // }
+    // luaController.Step(); });
+
+    // toolBar.SetResetCallback([&]()
+    //                          {
+    //                              robotArm->Reset();    // Cofnij ramię do pierwotnych pozycji
+    //                              luaController.Stop(); // Zatrzymaj wykonywanie kodu
+    //                          });
 
     rlImGuiSetup(true);
 
@@ -214,7 +221,10 @@ int main()
         const float logWindowHeight = currentHeight * 0.2f;
 
         float deltaTime = GetFrameTime();
-        luaController.Update(deltaTime);
+        if (luaController != nullptr)
+        {
+            luaController->Update(deltaTime);
+        }
 
         if (float wheelMove = GetMouseWheelMove(); wheelMove != 0)
         {
@@ -230,6 +240,7 @@ int main()
 
         if (robotArm != nullptr)
         {
+            robotArm->SetSceneObjects(sceneObjects);
             robotArm->Update();
             robotArm->Draw();
             robotArm->CheckCollisions(sceneObjects);
@@ -296,6 +307,11 @@ int main()
 
                 if (robotPicker.IsRobotSelected() && robotPicker.GetSelectedRobotIndex() != previousSelectedRobot)
                 {
+                    if (luaController)
+                    {
+                        delete luaController;
+                        luaController = nullptr;
+                    }
                     previousSelectedRobot = robotPicker.GetSelectedRobotIndex();
 
                     // Załaduj wybrany model robota
@@ -307,8 +323,38 @@ int main()
                     {
                         delete robotArm;
                     }
+                    if (luaController != nullptr)
+                    {
+                        delete luaController;
+                    }
 
                     robotArm = new RobotArm(robotModelPath.c_str(), robotConfigPath.c_str(), shader);
+                    luaController = new LuaController(*robotArm, logWindow);
+                    // Zaktualizuj callbacki paska narzędzi
+                    toolBar.SetStartCallback([luaController, &codeEditor, robotArm, &sceneObjects]()
+                                             {
+            if (robotArm != nullptr) {
+                robotArm->CheckCollisions(sceneObjects);
+            }
+            luaController->Run(); });
+
+                    toolBar.SetPauseCallback([luaController]()
+                                             { luaController->Stop(); });
+
+                    toolBar.SetStepCallback([luaController, &codeEditor, &logWindow]()
+                                            {
+            if(!luaController->IsRunning()) {
+                std::string code = codeEditor.GetText();
+                luaController->LoadScript(code);
+                luaController->SetStepMode(true);
+                luaController->Run(); 
+            }
+            luaController->Step(); });
+
+                    toolBar.SetResetCallback([robotArm, luaController]()
+                                             {
+            if(robotArm) robotArm->Reset();
+            if(luaController) luaController->Stop(); });
                 }
 
                 ImGui::EndTabItem();

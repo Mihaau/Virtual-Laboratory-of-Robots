@@ -62,7 +62,6 @@ private:
 public:
     RobotArm(const char* modelPath, const char* configPath, Shader shader);
     ~RobotArm();
-
     void Draw();
     void Update();
     void UpdateRotation(int meshIndex, float angle);
@@ -98,5 +97,5 @@ public:
         void StartTracing();
     void StopTracing();
     void ClearTrace(); 
-    // void Reset();
+    void Reset();
 };

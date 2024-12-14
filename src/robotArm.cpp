@@ -832,3 +832,14 @@ void RobotArm::ClearTrace()
     tracePath.clear();
     logWindow.AddLog("Wyczyszczono ścieżkę", LogLevel::Info);
 }
+void RobotArm::Reset()
+{
+    for (int i = 0; i < meshCount; i++)
+    {
+        meshRotations[i].angle = 0.0f;  // Resetuj kąty obrotu
+    }
+    isAnimating = false;
+    isTracing = false;
+    ClearTrace();
+    logWindow.AddLog("Ramię zostało zresetowane", LogLevel::Info);
+}
