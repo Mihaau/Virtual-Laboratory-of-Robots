@@ -172,9 +172,16 @@ void LuaController::Stop() {
 }
 
 void LuaController::Step() {
-    if(!isRunning || !stepMode) {
-        logWindow.AddLog("Step(): Program nie jest uruchomiony lub tryb krokowy jest wyłączony", LogLevel::Warning);
+    if (!stepMode) {
+        logWindow.AddLog("Step(): Tryb krokowy jest wyłączony", LogLevel::Warning);
         return;
+    }
+
+    if (!isRunning) {
+        // Zainicjuj wykonywanie jeśli jeszcze nie rozpoczęte
+        isRunning = true;
+        currentLine = 0;
+        logWindow.AddLog("Rozpoczęto wykonywanie krokowe", LogLevel::Info);
     }
 
     logWindow.AddLog("Wykonywanie kroku...", LogLevel::Info);
