@@ -249,16 +249,38 @@ RobotArm::RobotArm(const char *modelPath, const char *configPath, Shader shader)
     baseSideDirection = kinematics->GetEndEffectorSideDirection();
 }
 
-RobotArm::~RobotArm()
-{
-    UnloadModel(model);
-    delete[] pivotPoints;
-    delete[] meshRotations;
-    delete[] armLengths;
-    delete[] meshVisibility;
-    // Zamknij stan Lua jeśli używany
-    if (L)
-        lua_close(L);
+RobotArm::~RobotArm() {
+    try {
+        // Najpierw zwolnij obiekt jeśli jest trzymany
+        if (isGripping && grippedObject) {
+            ReleaseObject();
+        }
+        
+        // Wyczyść wskaźniki na obiekty sceny
+        sceneObjects = nullptr;
+        grippedObject = nullptr;
+
+        // Zwolnij kinematykę
+        delete kinematics;
+        kinematics = nullptr;
+
+        // Zwolnij dynamicznie alokowane tablice
+        delete[] meshVisibility;
+        delete[] meshRotations;
+        delete[] pivotPoints;
+        delete[] armLengths;
+
+        meshVisibility = nullptr;
+        meshRotations = nullptr;
+        pivotPoints = nullptr;
+        armLengths = nullptr;
+
+        // Zwolnij model
+        UnloadModel(model);
+    }
+    catch (const std::exception& e) {
+        logWindow.AddLog(("Błąd podczas zwalniania zasobów robota: " + std::string(e.what())).c_str(), LogLevel::Error);
+    }
 }
 
 void RobotArm::Draw()

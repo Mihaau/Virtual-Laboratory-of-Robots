@@ -89,7 +89,7 @@ public:
     void ReleaseObject();
     bool CanGrip() const { return isColliding && !isGripping; }
     bool IsGripping() const { return isGripping; }
-    void SetSceneObjects(const std::vector<Object3D*>& objects) { sceneObjects = &objects; }
+void SetSceneObjects(const std::vector<Object3D*>* objects) { sceneObjects = objects; }
     void DrawGripperDirection();
     float GetEndEffectorRoll();
     void MoveTo(Vector3 target, InterpolationType type);

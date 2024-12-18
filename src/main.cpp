@@ -141,7 +141,7 @@ int main()
         sceneLoader.LoadScene(filename, sceneObjects, shader);
     };
     if (robotArm != nullptr)
-        robotArm->SetSceneObjects(sceneObjects);
+        robotArm->SetSceneObjects(&sceneObjects);
 
     rlImGuiSetup(true);
 
@@ -209,7 +209,7 @@ int main()
 
         if (robotArm != nullptr)
         {
-            robotArm->SetSceneObjects(sceneObjects);
+            robotArm->SetSceneObjects(&sceneObjects);
             robotArm->Update();
             robotArm->Draw();
             robotArm->CheckCollisions(sceneObjects);
@@ -243,32 +243,6 @@ int main()
         ImGui::Begin("Konfiguracja", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
         if (ImGui::BeginTabBar("OpcjeTabBar"))
         {
-            // Zakładka dla kontrolek kamery
-            if (ImGui::BeginTabItem("Debug"))
-            {
-                cameraController.DrawImGuiControls();
-                if (robotArm != nullptr)
-                    robotArm->DrawImGuiControls();
-
-                lightController.DrawImGuiControls();
-
-                ImGui::Text("Model: %s", "assets/robot.glb");
-
-                // Dodanie przycisków do wysyłania testowych wiadomości logów
-                if (ImGui::Button("Dodaj log INFO"))
-                {
-                    logWindow.AddLog("To jest testowa wiadomość INFO", LogLevel::Info);
-                }
-                if (ImGui::Button("Dodaj log WARN"))
-                {
-                    logWindow.AddLog("To jest testowa wiadomość WARN", LogLevel::Warning);
-                }
-                if (ImGui::Button("Dodaj log ERROR"))
-                {
-                    logWindow.AddLog("To jest testowa wiadomość ERROR", LogLevel::Error);
-                }
-                ImGui::EndTabItem();
-            }
 
             if (ImGui::BeginTabItem("Roboty"))
             {
@@ -278,21 +252,34 @@ int main()
                 {
                     if (luaController != nullptr)
                     {
+                        luaController->Stop();
                         delete luaController;
                         luaController = nullptr;
                     }
 
-                    if (robotArm != nullptr)
-                    {
-                        delete robotArm;
-                    }
+if (robotArm != nullptr)
+{
+    robotArm->SetSceneObjects(nullptr); // Odłącz wskaźniki do sceny
+    delete robotArm;
+    robotArm = nullptr;
+}
+
                     previousSelectedRobot = robotPicker.GetSelectedRobotIndex();
 
                     // Załaduj wybrany model robota
                     std::string robotModelPath = robotPicker.GetSelectedRobotPath();
                     std::string robotConfigPath = robotPicker.GetSelectedConfigPath();
-                    robotArm = new RobotArm(robotModelPath.c_str(), robotConfigPath.c_str(), shader);
-                    luaController = new LuaController(*robotArm, logWindow);
+
+                    try
+                    {
+                        robotArm = new RobotArm(robotModelPath.c_str(), robotConfigPath.c_str(), shader);
+                        robotArm->SetSceneObjects(&sceneObjects);
+                        luaController = new LuaController(*robotArm, logWindow);
+                    }
+                    catch (const std::exception &e)
+                    {
+                        logWindow.AddLog(("Błąd podczas ładowania robota: " + std::string(e.what())).c_str(), LogLevel::Error);
+                    }
                     // Zaktualizuj callbacki paska narzędzi
                     toolBar.SetStartCallback([luaController, &codeEditor, robotArm, &sceneObjects]()
                                              {
@@ -379,6 +366,33 @@ int main()
 
                 ImGui::TextWrapped("Aktualny filtr: %s", filters[currentFilter]);
 
+                ImGui::EndTabItem();
+            }
+
+            // Zakładka dla kontrolek kamery
+            if (ImGui::BeginTabItem("Debug"))
+            {
+                cameraController.DrawImGuiControls();
+                if (robotArm != nullptr)
+                    robotArm->DrawImGuiControls();
+
+                lightController.DrawImGuiControls();
+
+                ImGui::Text("Model: %s", "assets/robot.glb");
+
+                // Dodanie przycisków do wysyłania testowych wiadomości logów
+                if (ImGui::Button("Dodaj log INFO"))
+                {
+                    logWindow.AddLog("To jest testowa wiadomość INFO", LogLevel::Info);
+                }
+                if (ImGui::Button("Dodaj log WARN"))
+                {
+                    logWindow.AddLog("To jest testowa wiadomość WARN", LogLevel::Warning);
+                }
+                if (ImGui::Button("Dodaj log ERROR"))
+                {
+                    logWindow.AddLog("To jest testowa wiadomość ERROR", LogLevel::Error);
+                }
                 ImGui::EndTabItem();
             }
 
