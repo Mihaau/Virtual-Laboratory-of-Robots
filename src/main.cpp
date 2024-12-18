@@ -143,37 +143,6 @@ int main()
     if (robotArm != nullptr)
         robotArm->SetSceneObjects(sceneObjects);
 
-    // LuaController luaController(*robotArm, logWindow);
-
-    // toolBar.SetStartCallback([luaController, &codeEditor, &robotArm, &sceneObjects]()
-    //                          {
-    // if (robotArm != nullptr) {
-    //     robotArm->CheckCollisions(sceneObjects);
-    // }
-    // luaController.Run(); });
-
-    // toolBar.SetPauseCallback([luaController]()
-    //                          { luaController.Stop(); });
-
-    // toolBar.SetStepCallback([luaController, &codeEditor, &logWindow]()
-    //                         {
-    // if(!luaController.IsRunning()) {
-    //     std::string code = codeEditor.GetText();
-    //     logWindow.AddLog("Wczytywanie skryptu...", LogLevel::Info);
-    //     logWindow.AddLog(code.c_str(), LogLevel::Info); // Pokaż zawartość skryptu
-
-    //     luaController.LoadScript(code);
-    //     luaController.SetStepMode(true);
-    //     luaController.Run();
-    // }
-    // luaController.Step(); });
-
-    // toolBar.SetResetCallback([&]()
-    //                          {
-    //                              robotArm->Reset();    // Cofnij ramię do pierwotnych pozycji
-    //                              luaController.Stop(); // Zatrzymaj wykonywanie kodu
-    //                          });
-
     rlImGuiSetup(true);
 
     // Załaduj czcionkę Roboto z odpowiednim zakresem znaków
@@ -307,49 +276,45 @@ int main()
 
                 if (robotPicker.IsRobotSelected() && robotPicker.GetSelectedRobotIndex() != previousSelectedRobot)
                 {
-                    if (luaController)
+                    if (luaController != nullptr)
                     {
                         delete luaController;
                         luaController = nullptr;
+                    }
+
+                    if (robotArm != nullptr)
+                    {
+                        delete robotArm;
                     }
                     previousSelectedRobot = robotPicker.GetSelectedRobotIndex();
 
                     // Załaduj wybrany model robota
                     std::string robotModelPath = robotPicker.GetSelectedRobotPath();
                     std::string robotConfigPath = robotPicker.GetSelectedConfigPath();
-
-                    // Usuń poprzedni obiekt robotArm jeśli istnieje
-                    if (robotArm != nullptr)
-                    {
-                        delete robotArm;
-                    }
-                    if (luaController != nullptr)
-                    {
-                        delete luaController;
-                    }
-
                     robotArm = new RobotArm(robotModelPath.c_str(), robotConfigPath.c_str(), shader);
                     luaController = new LuaController(*robotArm, logWindow);
                     // Zaktualizuj callbacki paska narzędzi
                     toolBar.SetStartCallback([luaController, &codeEditor, robotArm, &sceneObjects]()
                                              {
-            if (robotArm != nullptr) {
-                robotArm->CheckCollisions(sceneObjects);
-            }
-            luaController->Run(); });
+        if (robotArm != nullptr && luaController != nullptr) {
+            robotArm->CheckCollisions(sceneObjects);
+            luaController->LoadScript(codeEditor.GetText());
+            luaController->SetStepMode(false);
+            luaController->Run();
+        } });
 
                     toolBar.SetPauseCallback([luaController]()
                                              { luaController->Stop(); });
 
-                    toolBar.SetStepCallback([luaController, &codeEditor, &logWindow]()
+                    toolBar.SetStepCallback([luaController, &codeEditor]()
                                             {
-            if(!luaController->IsRunning()) {
-                std::string code = codeEditor.GetText();
-                luaController->LoadScript(code);
+        if (luaController != nullptr) {
+            if (!luaController->IsRunning()) {
+                luaController->LoadScript(codeEditor.GetText());
                 luaController->SetStepMode(true);
-                luaController->Run(); 
             }
-            luaController->Step(); });
+            luaController->Step();
+        } });
 
                     toolBar.SetResetCallback([robotArm, luaController]()
                                              {
