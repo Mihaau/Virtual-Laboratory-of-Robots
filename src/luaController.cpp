@@ -14,12 +14,24 @@ LuaController::LuaController(RobotArm& robot, LogWindow& log)
     InitLuaState();
 }
 void LuaController::InitLuaState() {
-    if (mainThread) lua_close(mainThread);
+    if (mainThread) {
+        lua_close(mainThread);
+        mainThread = nullptr;
+        L = nullptr;
+    }
     
     mainThread = luaL_newstate();
     luaL_openlibs(mainThread);
-    L = mainThread;  // L będzie aktualnym wątkiem wykonawczym
+    L = mainThread;
     RegisterFunctions();
+}
+
+void LuaController::ResetLuaState() {
+    L = lua_newthread(mainThread);
+    if (!L) {
+        logWindow.AddLog("Błąd podczas tworzenia nowego wątku Lua", LogLevel::Error);
+        return;
+    }
 }
 
 

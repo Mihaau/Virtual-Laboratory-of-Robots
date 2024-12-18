@@ -6,9 +6,10 @@ class LuaController
 {
 private:
     lua_State *L;
-    RobotArm& robotArm;
+    RobotArm &robotArm;
     LogWindow &logWindow;
-    static RobotArm* g_robotArm;
+    lua_State *mainThread; // Główny wątek Lua
+    static RobotArm *g_robotArm;
     bool isRunning;
     bool stepMode;
     int currentLine;
@@ -26,15 +27,9 @@ private:
     static int last_joint;
     static float last_angle;
     static float last_wait;
-        void ResetLuaState() {
-    if (L && L != mainThread) {
-        // Zamknij tylko podrzędny wątek, jeśli istnieje
-        lua_close(L);
-    }
-    L = lua_newthread(mainThread); // Stwórz nowy wątek wykonawczy
-    }
-        lua_State* mainThread;  // Główny wątek Lua
-    void InitLuaState(); 
+    void ResetLuaState();
+
+    void InitLuaState();
 
 public:
     LuaController(RobotArm &robot, LogWindow &log);
