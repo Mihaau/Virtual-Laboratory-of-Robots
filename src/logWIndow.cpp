@@ -9,11 +9,11 @@ void LogWindow::Draw(const char* title, const ImVec2& position, const ImVec2& si
     
     if (ImGui::Begin(title, nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
         // Toolbar
-        if (ImGui::Button("Clear")) Clear();
+        if (ImGui::Button("Wyczyść")) Clear();
         ImGui::SameLine();
         ImGui::Checkbox("Auto-scroll", &autoScroll);
         ImGui::SameLine();
-        filter.Draw("Filter", -100.0f);
+        filter.Draw("Filtr", -100.0f);
         
         ImGui::Separator();
         

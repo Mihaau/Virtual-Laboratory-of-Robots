@@ -329,7 +329,7 @@ if (robotArm != nullptr)
                 ImGui::EndTabItem();
             }
 
-            if (ImGui::BeginTabItem("Assets"))
+            if (ImGui::BeginTabItem("Zasoby"))
             {
                 assetBrowser.DrawImGuiControls();
                 ImGui::EndTabItem();
@@ -408,7 +408,7 @@ if (robotArm != nullptr)
         ImGui::SetNextWindowPos(ImVec2(0, toolbarHeight));
         ImGui::SetNextWindowSize(ImVec2(currentWidth - sidebarWidth, currentHeight - toolbarHeight - logWindowHeight));
 
-        ImGui::Begin("Scene View", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+        ImGui::Begin("Widok Sceny", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
         ImVec2 contentSize = ImGui::GetContentRegionAvail();
         UpdateRenderTexture(target, contentSize);
         if (currentTextureFilter == TEXTURE_FILTER_TRILINEAR)
@@ -420,7 +420,7 @@ if (robotArm != nullptr)
 
         ImGui::SetNextWindowPos(ImVec2(0, currentHeight - logWindowHeight));
         ImGui::SetNextWindowSize(ImVec2(currentWidth - sidebarWidth, logWindowHeight));
-        logWindow.Draw("Logs",
+        logWindow.Draw("Logi",
                        ImVec2(0, currentHeight - logWindowHeight),
                        ImVec2(currentWidth - sidebarWidth, logWindowHeight));
         if (showSplashScreen)
