@@ -3,10 +3,10 @@
 int Object3D::nextId = 0;
 std::vector<Object3D*> Object3D::deleteQueue;
 
-Object3D::Object3D(const char *modelPath, Shader shader) : shader(shader),
+Object3D::Object3D(const char* modelPath, Shader shader, float initialScale) : shader(shader),
     position({0.0f, 0.0f, 0.0f}),
     rotation({0.0f, 0.0f, 0.0f}),
-    scale(1.0f),
+    scale(initialScale),
     color(WHITE),
     modelPath(modelPath),
     id(nextId++)
@@ -42,7 +42,7 @@ void Object3D::UpdateTransformMatrix()
 {
     Matrix translation = MatrixTranslate(position.x, position.y, position.z);
     Matrix rotationX = MatrixRotateX(rotation.x * DEG2RAD);
-    Matrix rotationY = MatrixRotateY(rotation.y * DEG2RAD);
+    Matrix rotationY = MatrixRotateY((rotation.y)* DEG2RAD);
     Matrix rotationZ = MatrixRotateZ(rotation.z * DEG2RAD);
     Matrix scaleMatrix = MatrixScale(scale, scale, scale);
     
@@ -53,6 +53,32 @@ void Object3D::UpdateTransformMatrix()
     transformMatrix = MatrixMultiply(transformMatrix, rotationX);
     transformMatrix = MatrixMultiply(transformMatrix, translation);
 
+}
+
+void Object3D::SetTransformMatrix(const Matrix& matrix) {
+    Matrix translation = MatrixTranslate(position.x, position.y, position.z);
+    Matrix rotationX = MatrixRotateX(rotation.x * DEG2RAD);
+    Matrix rotationY = MatrixRotateY((rotation.y) * DEG2RAD);
+    Matrix rotationZ = MatrixRotateZ(rotation.z * DEG2RAD);
+    Matrix scaleMatrix = MatrixScale(scale, scale, scale);
+    Matrix rotationoffset = MatrixRotateY(90.0 * DEG2RAD);
+    
+    transformMatrix = MatrixIdentity();
+    transformMatrix = MatrixMultiply(transformMatrix, scaleMatrix);
+    // Najpierw rotacje
+    transformMatrix = MatrixMultiply(transformMatrix, rotationZ);
+    transformMatrix = MatrixMultiply(transformMatrix, rotationY);
+    transformMatrix = MatrixMultiply(transformMatrix, rotationX);
+    // transformMatrix = MatrixMultiply(transformMatrix, rotationoffset);
+    transformMatrix = MatrixMultiply(transformMatrix, matrix);
+    // transformMatrix = MatrixMultiply(transformMatrix, rotationoffset);
+    // Następnie skalowanie
+    
+    // Na końcu translacja
+    transformMatrix = MatrixMultiply(transformMatrix, translation);
+    // Mnożenie przez macierz wejściową
+
+    
 }
 
 void Object3D::Draw()
@@ -75,9 +101,8 @@ void Object3D::Draw()
     DrawObjectBoundingBox();
 }
 
-Object3D *Object3D::Create(const char *modelPath, Shader shader)
-{
-    return new Object3D(modelPath, shader);
+Object3D* Object3D::Create(const char* modelPath, Shader shader, float initialScale) {
+    return new Object3D(modelPath, shader, initialScale/4);
 }
 
 void Object3D::Delete(Object3D* obj) {

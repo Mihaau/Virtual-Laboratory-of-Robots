@@ -116,9 +116,9 @@ int main()
     CodeEditor codeEditor;
     AssetBrowser assetBrowser;
     LuaController *luaController = nullptr;
-    assetBrowser.onAddObjectToScene = [&shader, &sceneObjects](const char *modelPath)
+    assetBrowser.onAddObjectToScene = [&shader, &sceneObjects](const char *modelPath, float scale)
     {
-        Object3D *obj = Object3D::Create(modelPath, shader);
+        Object3D *obj = Object3D::Create(modelPath, shader,scale);
         sceneObjects.push_back(obj);
     };
 

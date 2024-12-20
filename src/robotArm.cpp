@@ -241,7 +241,7 @@ RobotArm::RobotArm(const char *modelPath, const char *configPath, Shader shader)
     defaultMaterial.shader = shader;
     kinematics = new RobotKinematics(pivotPoints, armLengths, meshRotations, model.meshCount, scale);
 
-    gripperRadius = 20.0f;
+    gripperRadius = 0.1f;
     isColliding = false;
     gripperColor = GREEN;
     baseDirection = kinematics->GetEndEffectorDirection();
@@ -556,11 +556,13 @@ void RobotArm::DrawImGuiControls()
             ImGui::TreePop();
         }
 
-        if (ImGui::SliderFloat("Scale", &scale, 0.001f, 0.1f))
-        {
-            kinematics->SetScale(scale);
-            kinematics->CalculateTrajectory(); // Przelicz trajektorię dla nowej skali
-        }
+if (ImGui::InputFloat("Scale", &scale, 0.001f, 100.0f, "%.3f"))
+{
+
+
+    kinematics->SetScale(scale);
+    kinematics->CalculateTrajectory(); // Przelicz trajektorię dla nowej skali
+}
         float col[4] = {
             color.r / 255.0f,
             color.g / 255.0f,
@@ -626,36 +628,25 @@ void RobotArm::Update()
         }
     }
 
-    if (isGripping && grippedObject)
-    {
-        Vector3 EndEffectorPos = kinematics->CalculateEndEffectorPosition();
-        Vector3 currentXVector = kinematics->GetEndEffectorDirection();
-        Vector3 currentYVector = kinematics->GetEndEffectorUpDirection();
-        Vector3 currentZVector = kinematics->GetEndEffectorSideDirection();
+if (isGripping && grippedObject) {
 
-        // Oblicz kąty Eulera
-        Vector3 effectorRotation = CalculateStupidAngle(currentXVector, currentYVector, currentZVector);
+    // Oblicz kierunki osi chwytaka
+    Vector3 right = kinematics->GetEndEffectorDirection();
+    Vector3 up = kinematics->GetEndEffectorUpDirection();
+    Vector3 forward = kinematics->GetEndEffectorSideDirection();
+    Vector3 objPos = grippedObject->GetPosition();
+    Vector3 gripPos = gripperPosition;
 
-        // Zamień kolejność komponentów i dostosuj znaki
-        Vector3 finalRotation = {
-            effectorRotation.y, // pitch
-            effectorRotation.x, // yaw
-            -effectorRotation.z // roll
-        };
+    // Stwórz macierz rotacji na podstawie osi
+    Matrix rotationMatrix = {
+        right.x,   up.x,   forward.x, 0.0f,    // Pierwsza kolumna (oś X)
+        right.y,   up.y,   forward.y, 0.0f,    // Druga kolumna (oś Y) 
+        right.z,   up.z,   forward.z, 0.0f,    // Trzecia kolumna (oś Z)
+        0.0f,      0.0f,   0.0f,      1.0f     // Czwarta kolumna (translacja)
+    };
 
-        // Stwórz macierz rotacji dla aktualnej orientacji efektora
-        Matrix rotMatrix = CreateRotationMatrix(finalRotation);
-
-        // Przekształć oryginalny offset przez macierz rotacji
-        Vector3 rotatedOffset = Vector3Transform(originalGripOffset, rotMatrix);
-
-        // Oblicz finalną pozycję
-        Vector3 finalPos = Vector3Add(EndEffectorPos, rotatedOffset);
-
-        // Ustaw rotację i pozycję obiektu
-        grippedObject->SetGlobalRotation(finalRotation);
-        grippedObject->SetPosition(finalPos);
-    }
+    grippedObject->SetTransformMatrix(rotationMatrix);
+}
 }
 
 void RobotArm::SetScale(float newScale)
@@ -696,7 +687,7 @@ void RobotArm::CheckCollisions(const std::vector<Object3D *> &objects)
         Vector3 max = Vector3Add(Vector3Scale(objBox.max, objScale), objPos);
         BoundingBox transformedBox = {min, max};
 
-        if (CheckCollisionBoxSphere(transformedBox, gripperPosition, gripperRadius * scale))
+        if (CheckCollisionBoxSphere(transformedBox, gripperPosition, gripperRadius))
         {
             if (isGripping)
             {
@@ -716,7 +707,7 @@ void RobotArm::CheckCollisions(const std::vector<Object3D *> &objects)
 
                     Matrix transform = obj->GetTransform();
                     RayCollision collision = GetRayCollisionMesh(ray, objModel.meshes[i], transform);
-                    if (collision.hit && collision.distance < gripperRadius * scale)
+                    if (collision.hit && collision.distance < gripperRadius)
                     {
                         currentlyColliding = true;
                         collidingObjectName = obj->GetModelPath();
@@ -749,7 +740,7 @@ void RobotArm::CheckCollisions(const std::vector<Object3D *> &objects)
 void RobotArm::DrawGripper()
 {
     // Dostosuj promień do skali modelu
-    float scaledRadius = gripperRadius * scale;
+    float scaledRadius = gripperRadius;
     DrawSphere(gripperPosition, scaledRadius, gripperColor);
 }
 
@@ -769,7 +760,7 @@ void RobotArm::GripObject()
             Vector3Add(Vector3Scale(objBox.min, objScale), objPos),
             Vector3Add(Vector3Scale(objBox.max, objScale), objPos)};
 
-        if (CheckCollisionBoxSphere(transformedBox, gripperPosition, gripperRadius * scale))
+        if (CheckCollisionBoxSphere(transformedBox, gripperPosition, gripperRadius))
         {
             grippedObject = const_cast<Object3D *>(obj);
             isGripping = true;
@@ -803,7 +794,7 @@ void RobotArm::ReleaseObject()
 void RobotArm::DrawGripperDirection()
 {
     // Długość linii wskazującej kierunek
-    const float directionLineLength = gripperRadius * 4.0f * scale;
+    const float directionLineLength = gripperRadius * 2.0f;
 
     // Oblicz punkt końcowy linii
     Vector3 direction = kinematics->GetEndEffectorDirection();

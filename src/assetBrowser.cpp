@@ -203,7 +203,8 @@ void AssetBrowser::DrawImGuiControls()
                 {
                     if (onAddObjectToScene && selectedItem)
                     {
-                        onAddObjectToScene(selectedItem->path.c_str());
+                       onAddObjectToScene(selectedItem->path.c_str(), selectedItem->config.model.scale);
+
                     }
                     ImGui::CloseCurrentPopup();
                 }

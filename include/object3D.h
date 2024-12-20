@@ -10,12 +10,12 @@ namespace fs = std::filesystem;
 class Object3D
 {
 public:
-    Object3D(const char *modelPath, Shader shader);
+    Object3D(const char* modelPath, Shader shader, float initialScale = 1.0f);
     ~Object3D();
 
     void Draw();
     void DrawImGuiControls();
-    static Object3D *Create(const char *modelPath, Shader shader);
+    static Object3D* Create(const char* modelPath, Shader shader, float initialScale = 1.0f);
     static void ResetIdCounter() { nextId = 0; }
 
     // Settery
@@ -47,6 +47,8 @@ public:
         UpdateTransformMatrix();
     }
     void SetColor(Color col) { color = col; }
+
+    void SetTransformMatrix(const Matrix& matrix);
 
     // Gettery
     int GetId() const { return id; }

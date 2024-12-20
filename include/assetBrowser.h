@@ -28,7 +28,7 @@ public:
     AssetBrowser();
     ~AssetBrowser();
     void DrawImGuiControls();
-    std::function<void(const char*)> onAddObjectToScene;
+    std::function<void(const char*,float)> onAddObjectToScene;
 
 private:
     std::vector<AssetItem> assets;
