@@ -628,25 +628,36 @@ void RobotArm::Update()
         }
     }
 
-if (isGripping && grippedObject) {
+    if (isGripping && grippedObject)
+    {
+        Vector3 EndEffectorPos = kinematics->CalculateEndEffectorPosition();
+        Vector3 currentXVector = kinematics->GetEndEffectorDirection();
+        Vector3 currentYVector = kinematics->GetEndEffectorUpDirection();
+        Vector3 currentZVector = kinematics->GetEndEffectorSideDirection();
 
-    // Oblicz kierunki osi chwytaka
-    Vector3 right = kinematics->GetEndEffectorDirection();
-    Vector3 up = kinematics->GetEndEffectorUpDirection();
-    Vector3 forward = kinematics->GetEndEffectorSideDirection();
-    Vector3 objPos = grippedObject->GetPosition();
-    Vector3 gripPos = gripperPosition;
+        // Oblicz kąty Eulera
+        Vector3 effectorRotation = CalculateStupidAngle(currentXVector, currentYVector, currentZVector);
 
-    // Stwórz macierz rotacji na podstawie osi
-    Matrix rotationMatrix = {
-        right.x,   up.x,   forward.x, 0.0f,    // Pierwsza kolumna (oś X)
-        right.y,   up.y,   forward.y, 0.0f,    // Druga kolumna (oś Y) 
-        right.z,   up.z,   forward.z, 0.0f,    // Trzecia kolumna (oś Z)
-        0.0f,      0.0f,   0.0f,      1.0f     // Czwarta kolumna (translacja)
-    };
+        // Zamień kolejność komponentów i dostosuj znaki
+        Vector3 finalRotation = {
+            effectorRotation.y, // pitch
+            effectorRotation.x, // yaw
+            -effectorRotation.z // roll
+        };
 
-    grippedObject->SetTransformMatrix(rotationMatrix);
-}
+        // Stwórz macierz rotacji dla aktualnej orientacji efektora
+        Matrix rotMatrix = CreateRotationMatrix(finalRotation);
+
+        // Przekształć oryginalny offset przez macierz rotacji
+        Vector3 rotatedOffset = Vector3Transform(originalGripOffset, rotMatrix);
+
+        // Oblicz finalną pozycję
+        Vector3 finalPos = Vector3Add(EndEffectorPos, rotatedOffset);
+
+        // Ustaw rotację i pozycję obiektu
+        grippedObject->SetGlobalRotation(finalRotation);
+        grippedObject->SetPosition(finalPos);
+    }
 }
 
 void RobotArm::SetScale(float newScale)
