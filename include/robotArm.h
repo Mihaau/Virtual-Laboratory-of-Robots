@@ -59,6 +59,16 @@ private:
     std::vector<Vector3> tracePath;
     Vector3 originalGripOffset;
     int meshCount;
+
+        struct JointAnimation {
+        int jointIndex;
+        float startAngle;
+        float targetAngle;
+        float animationTime;
+        bool isAnimating;
+    };
+
+    JointAnimation jointAnim;
 public:
     RobotArm(const char* modelPath, const char* configPath, Shader shader);
     ~RobotArm();
@@ -98,4 +108,5 @@ void SetSceneObjects(const std::vector<Object3D*>* objects) { sceneObjects = obj
     void StopTracing();
     void ClearTrace(); 
     void Reset();
+    void RotateJointSmooth(int jointIndex, float targetAngle, float duration = 1.0f);
 };

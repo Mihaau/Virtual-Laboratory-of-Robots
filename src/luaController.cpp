@@ -51,6 +51,7 @@ void LuaController::RegisterFunctions()
     lua_register(L, "startTracing", lua_startTracing);
     lua_register(L, "stopTracing", lua_stopTracing);
     lua_register(L, "clearTracing", lua_clearTracing);
+    lua_register(L, "rotate", lua_rotateJointSmooth);
 }
 
 int LuaController::lua_setJointRotation(lua_State *L)
@@ -154,6 +155,18 @@ int LuaController::lua_stopTracing(lua_State* L) {
 int LuaController::lua_clearTracing(lua_State* L) {
     if(g_robotArm) {
         g_robotArm->ClearTrace();
+    }
+    return lua_yield(L, 0);
+}
+
+int LuaController::lua_rotateJointSmooth(lua_State *L) {
+    int joint = lua_tointeger(L, 1);
+    float angle = lua_tonumber(L, 2);
+    float duration = lua_tonumber(L, 3);  // Optional parameter
+
+    if (g_robotArm) {
+        g_robotArm->RotateJointSmooth(joint, angle, duration);
+        last_wait = duration; // Wait for animation to complete
     }
     return lua_yield(L, 0);
 }

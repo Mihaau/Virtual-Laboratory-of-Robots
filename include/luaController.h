@@ -27,6 +27,7 @@ private:
     static int lua_startTracing(lua_State *L);
     static int lua_stopTracing(lua_State *L);
     static int lua_clearTracing(lua_State *L);
+    static int lua_rotateJointSmooth(lua_State *L);
     static int last_joint;
     static float last_angle;
     static float last_wait;

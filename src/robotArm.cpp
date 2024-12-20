@@ -619,6 +619,21 @@ void RobotArm::Update()
         kinematics->SolveIK();
     }
 
+        // Joint rotation animation
+    if (jointAnim.isAnimating) {
+        jointAnim.animationTime += GetFrameTime();
+        float t = jointAnim.animationTime / ANIMATION_DURATION;
+
+        if (t >= 1.0f) {
+            jointAnim.isAnimating = false;
+            RotateJoint(jointAnim.jointIndex, jointAnim.targetAngle);
+        } else {
+            float currentAngle = jointAnim.startAngle + 
+                (jointAnim.targetAngle - jointAnim.startAngle) * t;
+            RotateJoint(jointAnim.jointIndex, currentAngle);
+        }
+    }
+
     if (isTracing)
     {
         // Dodaj tylko jeśli pozycja się zmieniła
@@ -866,4 +881,14 @@ void RobotArm::Reset()
     isTracing = false;
     ClearTrace();
     logWindow.AddLog("Ramię zostało zresetowane", LogLevel::Info);
+}
+
+void RobotArm::RotateJointSmooth(int jointIndex, float targetAngle, float duration) {
+    if (jointIndex >= 0 && jointIndex < model.meshCount) {
+        jointAnim.jointIndex = jointIndex;
+        jointAnim.startAngle = meshRotations[jointIndex].angle;
+        jointAnim.targetAngle = targetAngle;
+        jointAnim.animationTime = 0.0f;
+        jointAnim.isAnimating = true;
+    }
 }
