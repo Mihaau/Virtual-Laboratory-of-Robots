@@ -7,9 +7,11 @@ moveLinear(0, 2, 2)
 local cycles = 3
 
 for i = 1, cycles do
-
+startTracing() 
 moveLinear(2, 2, 0)
+stopTracing() 
 wait(0.5)
 moveLinear(0, 2, 2)
+clearTracing() 
 
 end

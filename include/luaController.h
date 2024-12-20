@@ -24,6 +24,9 @@ private:
     static int lua_moveSpline(lua_State *L);
     static int lua_gripObject(lua_State *L);
     static int lua_releaseObject(lua_State *L);
+    static int lua_startTracing(lua_State *L);
+    static int lua_stopTracing(lua_State *L);
+    static int lua_clearTracing(lua_State *L);
     static int last_joint;
     static float last_angle;
     static float last_wait;
