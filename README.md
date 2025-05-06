@@ -13,6 +13,17 @@
 
 Virtual laboratory for industrial robots, featuring 3D models of robots available in an industrial robotics workshop. The virtual robot lab allows users to control the movement of simulated robots, manipulate objects in the virtual environment (such as picking up and releasing blocks), and includes a robot program editor for defining basic robot operations
 
+<div align="center">
+  <p>
+    <a align="center" href="" target="https://github.com/Mihaau/Virtual-Laboratory-of-Robots">
+      <img
+        width="100%"
+        src="/docs/assets/robots.png"
+      >
+    </a>
+  </p>
+</div>
+
 ## 🔥 Features
 
 - Real-Time Feedback: Visual and numerical feedback is provided in real-time to help users understand the robot's movements and positions.
